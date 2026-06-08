@@ -1,4 +1,4 @@
 [
  { "id": "gaslamp", "label": "Газовый фонарь", "file": "gaslamp2.glb" },
- { "id": "cube", "label": "Куб", "file": "q.glb" }
+ { "id": "cube", "label": "Куб", "file": "q.glb" },
 ]
