@@ -1042,6 +1042,7 @@ async function placeModel() {
 
 // ─── Fallback 3D viewer ───────────────────────────────────
 async function startFallback() {
+  $('splash').style.display = 'none';
   $('no-webxr').classList.remove('show');
 
   renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
@@ -1074,7 +1075,7 @@ async function startFallback() {
   let obj = null;
   if (modelList.length > 0) {
     try {
-      obj = await loadModel(0);
+      obj = await loadModel(currentModelIdx);
     } catch(e) {}
   }
   if (!obj) {
