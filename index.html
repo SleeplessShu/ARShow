@@ -395,6 +395,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // ─── State ────────────────────────────────────────────────
 let renderer, scene, camera, xrSession, hitTestSource, reticle, placedObject, clock;
@@ -498,18 +499,58 @@ async function loadModel(idx) {
       gltf => {
         hideLoadingOverlay();
         const root = gltf.scene;
-        // Auto-scale: fit into ~0.5m bounding box
-        const box = new THREE.Box3().setFromObject(root);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) root.scale.setScalar(0.5 / maxDim);
-        // Re-center at origin bottom
+
+        // Step 1: measure world-space bbox BEFORE any scale change
+        // (children may have their own scale baked in, like ×10 here)
+        const tmpScene = new THREE.Scene();
+        tmpScene.add(root);
+        const rawBox = new THREE.Box3().setFromObject(root);
+        const rawSize = rawBox.getSize(new THREE.Vector3());
+        const maxDim = Math.max(rawSize.x, rawSize.y, rawSize.z);
+
+        // Step 2: apply uniform scale so longest axis = TARGET_SIZE
+        const TARGET_SIZE = 0.5; // metres
+        if (maxDim > 0) {
+          const s = TARGET_SIZE / maxDim;
+          root.scale.setScalar(s);
+        }
+
+        // Step 3: re-measure after scale, shift so bottom sits at Y=0
         const box2 = new THREE.Box3().setFromObject(root);
         const center = box2.getCenter(new THREE.Vector3());
-        root.position.sub(center);
-        root.position.y += (box2.getSize(new THREE.Vector3()).y / 2);
+        root.position.x -= center.x;
+        root.position.z -= center.z;
+        root.position.y -= box2.min.y; // bottom flush with ground
 
-        root.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+        root.traverse(m => {
+          if (m.isMesh) {
+            m.castShadow = true;
+            m.receiveShadow = true;
+            // Fix fully-metallic materials that look black without envmap
+            if (m.material) {
+              const mats = Array.isArray(m.material) ? m.material : [m.material];
+              mats.forEach(mat => {
+                if (mat.metalness !== undefined && mat.metalness > 0.8) {
+                  // reduce metalness slightly so ambient light is visible
+                  mat.metalness = Math.min(mat.metalness, 0.7);
+                  mat.roughness = Math.max(mat.roughness, 0.25);
+                }
+                mat.needsUpdate = true;
+              });
+            }
+          }
+        });
+
+        // Apply scene envmap for metallic materials
+        if (scene && scene.environment) {
+          root.traverse(m => {
+            if (m.isMesh && m.material) {
+              const mats = Array.isArray(m.material) ? m.material : [m.material];
+              mats.forEach(mat => { mat.envMap = scene.environment; mat.needsUpdate = true; });
+            }
+          });
+        }
+
         modelCache[entry.file] = root;
         resolve(root.clone());
       },
@@ -573,6 +614,12 @@ async function startAR() {
   scene = new THREE.Scene();
   clock = new THREE.Clock();
   camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.01, 20);
+
+  // Neutral environment map — metallic/glossy materials need this to not look black
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.7));
   const dir = new THREE.DirectionalLight(0xffffff, 1.4);
@@ -798,6 +845,11 @@ async function startFallback() {
   camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 20);
   camera.position.set(0.6, 0.6, 1.0);
   camera.lookAt(0, 0.2, 0);
+
+  const pmrem2 = new THREE.PMREMGenerator(renderer);
+  pmrem2.compileEquirectangularShader();
+  scene.environment = pmrem2.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem2.dispose();
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const dir = new THREE.DirectionalLight(0xffffff, 1.5);
