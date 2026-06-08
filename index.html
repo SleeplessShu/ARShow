@@ -42,9 +42,7 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
   }
-  .sub {
-    color: #8888aa; font-size: 1rem; margin-bottom: 2.5rem; line-height: 1.5;
-  }
+  .sub { color: #8888aa; font-size: 1rem; margin-bottom: 2.5rem; line-height: 1.5; }
 
   .compat-badge {
     display: inline-flex; align-items: center; gap: 6px;
@@ -67,53 +65,40 @@
     transition: transform 0.15s, box-shadow 0.15s;
     margin-bottom: 1rem;
   }
-  .btn-start:active { transform: scale(0.97); box-shadow: 0 4px 15px #6c47ff33; }
+  .btn-start:active { transform: scale(0.97); }
 
   .hint-list {
     list-style: none; margin-top: 2rem;
     display: flex; flex-direction: column; gap: 10px;
-    max-width: 320px; width: 100%;
-    text-align: left;
+    max-width: 320px; width: 100%; text-align: left;
   }
   .hint-list li {
     display: flex; align-items: flex-start; gap: 10px;
-    font-size: 0.85rem; color: #6677aa;
-    line-height: 1.4;
+    font-size: 0.85rem; color: #6677aa; line-height: 1.4;
   }
-  .hint-list li span.ic {
-    font-size: 1.1rem; flex-shrink: 0; margin-top: 1px;
-  }
+  .hint-list li span.ic { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
 
-  #canvas-wrap {
-    position: fixed; inset: 0;
-    display: none;
-  }
-
+  #canvas-wrap { position: fixed; inset: 0; display: none; }
   #canvas-wrap.active { display: block; }
-
   canvas { display: block; width: 100%; height: 100%; }
 
   #ui-overlay {
     position: fixed; inset: 0;
     pointer-events: none;
-    display: none;
-    z-index: 10;
+    display: none; z-index: 10;
   }
   #ui-overlay.active { display: block; }
 
   #reticle-hint {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    text-align: center;
-    color: #ffffffcc;
-    font-size: 0.9rem;
-    text-shadow: 0 2px 8px #000a;
+    text-align: center; color: #ffffffcc;
+    font-size: 0.9rem; text-shadow: 0 2px 8px #000a;
     display: flex; flex-direction: column; align-items: center; gap: 10px;
   }
   .scan-ring {
     width: 64px; height: 64px;
-    border: 2px solid #ffffffaa;
-    border-radius: 50%;
+    border: 2px solid #ffffffaa; border-radius: 50%;
     border-top-color: #6c47ff;
     animation: spin 1.2s linear infinite;
   }
@@ -133,14 +118,13 @@
   .tb-btn {
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     background: none; border: none; color: #fff; cursor: pointer;
-    padding: 8px 12px;
-    border-radius: 14px;
+    padding: 8px 12px; border-radius: 14px;
     font-size: 0.7rem; font-weight: 500; letter-spacing: 0.5px;
     transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
   .tb-btn:active { background: rgba(255,255,255,0.1); }
   .tb-btn svg { width: 24px; height: 24px; }
-  .tb-btn.danger { color: #ff5566; }
   .tb-btn.placed-only { opacity: 0.4; pointer-events: none; }
   .tb-btn.placed-only.enabled { opacity: 1; pointer-events: all; }
 
@@ -162,8 +146,7 @@
     background: rgba(10,10,20,0.7);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 20px;
-    padding: 14px 10px;
+    border-radius: 20px; padding: 14px 10px;
   }
   #scale-slider.visible { display: flex; }
   #scale-slider label { font-size: 0.7rem; color: #8888aa; writing-mode: vertical-lr; transform: rotate(180deg); }
@@ -175,50 +158,132 @@
   }
   #scale-val { font-size: 0.75rem; color: #aaa; }
 
-  #model-picker {
+  /* ── Dropdown ── */
+  #model-dropdown-wrap {
     position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);
-    display: none; gap: 10px;
+    display: none;
     pointer-events: all;
+    min-width: 220px;
   }
-  #model-picker.visible { display: flex; }
-  .mpick-btn {
-    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  #model-dropdown-wrap.visible { display: block; }
+
+  #model-dropdown {
+    background: rgba(10,10,20,0.92);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    overflow: hidden;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  #model-dropdown::-webkit-scrollbar { width: 4px; }
+  #model-dropdown::-webkit-scrollbar-track { background: transparent; }
+  #model-dropdown::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .dropdown-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 18px;
+    cursor: pointer;
+    font-size: 0.9rem; color: #ccccee;
+    border-bottom: 0.5px solid rgba(255,255,255,0.06);
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:active { background: rgba(108,71,255,0.2); }
+  .dropdown-item.active {
+    background: rgba(108,71,255,0.15);
+    color: #fff;
+  }
+  .dropdown-item .item-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.07);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+  }
+  .dropdown-item.active .item-icon {
+    background: rgba(108,71,255,0.3);
+  }
+  .dropdown-item .item-info { display: flex; flex-direction: column; gap: 2px; }
+  .dropdown-item .item-name { font-weight: 500; }
+  .dropdown-item .item-file { font-size: 0.7rem; color: #666688; }
+  .dropdown-item .item-check {
+    margin-left: auto; color: #6c47ff;
+    display: none;
+  }
+  .dropdown-item.active .item-check { display: block; }
+
+  /* Loading indicator inside dropdown */
+  .dropdown-loading {
+    padding: 20px; text-align: center;
+    color: #6677aa; font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .mini-spin {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: #6c47ff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* Per-item loading spinner overlay on placement */
+  #loading-overlay {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
     background: rgba(10,10,20,0.75);
     backdrop-filter: blur(12px);
-    border: 1.5px solid rgba(255,255,255,0.08);
-    border-radius: 16px;
-    padding: 10px 14px;
-    color: #ccc; font-size: 0.7rem; cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 20px 28px;
+    display: none;
+    flex-direction: column; align-items: center; gap: 12px;
+    pointer-events: none;
   }
-  .mpick-btn.active { border-color: #6c47ff; color: #fff; }
-  .mpick-btn svg { width: 28px; height: 28px; margin-bottom: 2px; }
+  #loading-overlay.show { display: flex; }
+  .load-ring {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: #6c47ff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  #loading-overlay span { font-size: 0.8rem; color: #aaaacc; }
 
   #no-webxr {
     position: fixed; inset: 0; display: none;
     flex-direction: column; align-items: center; justify-content: center;
-    background: #0a0a0f; padding: 2rem; text-align: center;
-    z-index: 200;
+    background: #0a0a0f; padding: 2rem; text-align: center; z-index: 200;
   }
   #no-webxr.show { display: flex; }
   #no-webxr h2 { margin-bottom: 1rem; color: #ff6677; }
   #no-webxr p { color: #8888aa; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem; }
   #no-webxr a { color: #7766ff; }
-
-  .fallback-mode {
-    font-size: 0.7rem; color: #666; margin-top: 0.5rem;
-  }
   #btn-fallback {
-    margin-top: 1rem;
-    padding: 0.8rem 1.5rem;
+    margin-top: 1rem; padding: 0.8rem 1.5rem;
     background: #1a1f35; border: 1px solid #3a3f65;
     border-radius: 12px; color: #aac; font-size: 0.9rem; cursor: pointer;
   }
+  .fallback-mode { font-size: 0.7rem; color: #666; margin-top: 0.5rem; }
+
+  #error-toast {
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+    background: rgba(180,40,40,0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,100,100,0.3);
+    border-radius: 12px; padding: 10px 18px;
+    font-size: 0.8rem; color: #ffdddd;
+    display: none; white-space: nowrap;
+    pointer-events: none;
+  }
+  #error-toast.show { display: block; }
 </style>
 </head>
 <body>
 
-<!-- Splash Screen -->
 <div id="splash">
   <div class="logo">
     <svg viewBox="0 0 44 44" fill="none">
@@ -230,38 +295,32 @@
   </div>
   <h1>AR Placer</h1>
   <p class="sub">Размещайте 3D‑модели на&nbsp;реальных поверхностях через камеру вашего телефона</p>
-
   <div class="compat-badge">
     <div class="dot"></div>
     iOS Safari · Android Chrome · WebXR
   </div>
-
   <button class="btn-start" id="btn-start">Запустить AR</button>
-
   <ul class="hint-list">
     <li><span class="ic">📷</span><span>Разрешите доступ к камере когда появится запрос</span></li>
     <li><span class="ic">🔍</span><span>Медленно водите телефоном, чтобы найти горизонтальную поверхность</span></li>
     <li><span class="ic">👆</span><span>Нажмите на поверхность — модель прикрепится к ней</span></li>
-    <li><span class="ic">↕️</span><span>Используйте ползунок для изменения масштаба</span></li>
+    <li><span class="ic">↕️</span><span>Ползунок справа — масштаб модели</span></li>
   </ul>
 </div>
 
-<!-- No WebXR fallback -->
 <div id="no-webxr">
   <h2>⚠️ AR недоступен</h2>
   <p>Ваш браузер не поддерживает WebXR Hit Testing.<br>
-  Попробуйте открыть в <strong>Safari на iPhone (iOS 15+)</strong> или <strong>Chrome на Android</strong>.</p>
+  Попробуйте <strong>Safari на iPhone (iOS 16+)</strong> или <strong>Chrome на Android</strong>.</p>
   <p><a href="https://immersiveweb.dev/#supporttable" target="_blank">Таблица совместимости →</a></p>
   <button id="btn-fallback">Открыть 3D просмотр без AR</button>
   <p class="fallback-mode">Режим предпросмотра без привязки к поверхности</p>
 </div>
 
-<!-- Three.js canvas -->
 <div id="canvas-wrap">
   <canvas id="c"></canvas>
 </div>
 
-<!-- AR UI Overlay -->
 <div id="ui-overlay">
   <div id="status-bar">Наводите на пол или стол...</div>
 
@@ -270,21 +329,34 @@
     <span>Сканирование поверхности</span>
   </div>
 
+  <div id="loading-overlay">
+    <div class="load-ring"></div>
+    <span id="loading-label">Загрузка модели...</span>
+  </div>
+
+  <div id="error-toast"></div>
+
   <div id="scale-slider" class="visible">
     <label>масштаб</label>
     <input type="range" id="scaleInput" min="0.05" max="3" step="0.05" value="1" orient="vertical">
     <span id="scale-val">1.0×</span>
   </div>
 
-  <div id="model-picker">
-    <!-- populated by JS -->
+  <div id="model-dropdown-wrap">
+    <div id="model-dropdown">
+      <div class="dropdown-loading">
+        <div class="mini-spin"></div>
+        Загрузка списка...
+      </div>
+    </div>
   </div>
 
   <div id="toolbar">
     <button class="tb-btn" id="btn-pick">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-        <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
       </svg>
       Модель
     </button>
@@ -321,119 +393,176 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-const MODELS = [
-  { id: 'box',     label: 'Куб',       build: buildBox },
-  { id: 'chair',   label: 'Стул',      build: buildChair },
-  { id: 'table',   label: 'Стол',      build: buildTable },
-  { id: 'sphere',  label: 'Шар',       build: buildSphere },
-];
-
+// ─── State ────────────────────────────────────────────────
 let renderer, scene, camera, xrSession, hitTestSource, reticle, placedObject, clock;
-let isPlaced = false, isRotating = false, autoRotate = false;
-let currentModelIdx = 0;
+let isPlaced = false, autoRotate = false;
 let scaleVal = 1;
 let touchStartX = 0, lastYaw = 0;
 
+let modelList = [];        // [{id, label, file}, ...]
+let currentModelIdx = 0;
+const modelCache = {};     // file → THREE.Group (cloned on use)
+
+const loader = new GLTFLoader();
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/');
+loader.setDRACOLoader(draco);
+
 const $ = id => document.getElementById(id);
 
-// ─── Model builders ───────────────────────────────────────
-
-function buildBox() {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x6c47ff, roughness: 0.4, metalness: 0.3 });
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
-  mesh.castShadow = true;
-  g.add(mesh);
-  return g;
+// ─── Load models/index.json ───────────────────────────────
+async function loadModelList() {
+  try {
+    const res = await fetch('models/index.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    modelList = await res.json();
+    if (!Array.isArray(modelList) || modelList.length === 0) throw new Error('Пустой список');
+    buildDropdown();
+  } catch (e) {
+    showDropdownError(`Не удалось загрузить models/index.json: ${e.message}`);
+  }
 }
 
-function buildSphere() {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x00c6a2, roughness: 0.3, metalness: 0.5 });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 32, 24), mat);
-  mesh.castShadow = true;
-  g.add(mesh);
-  return g;
-}
-
-function buildChair() {
-  const g = new THREE.Group();
-  const wood = new THREE.MeshStandardMaterial({ color: 0xc0844a, roughness: 0.7 });
-  const leg = (x,z) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 8), wood);
-    m.position.set(x, 0.125, z); g.add(m);
-  };
-  leg(-0.09,-0.09); leg(0.09,-0.09); leg(-0.09,0.09); leg(0.09,0.09);
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.02, 0.26), wood);
-  seat.position.y = 0.25; g.add(seat);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.22, 0.025), wood);
-  back.position.set(0, 0.37, -0.115); g.add(back);
-  g.traverse(m => { if(m.isMesh) m.castShadow = true; });
-  return g;
-}
-
-function buildTable() {
-  const g = new THREE.Group();
-  const wood = new THREE.MeshStandardMaterial({ color: 0x8b6343, roughness: 0.65 });
-  const top = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.025, 0.3), wood);
-  top.position.y = 0.3; g.add(top);
-  const leg = (x,z) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.03), wood);
-    m.position.set(x, 0.15, z); g.add(m);
-  };
-  leg(-0.22,-0.12); leg(0.22,-0.12); leg(-0.22,0.12); leg(0.22,0.12);
-  g.traverse(m => { if(m.isMesh) m.castShadow = true; });
-  return g;
-}
-
-// ─── UI setup ─────────────────────────────────────────────
-
-function buildModelPicker() {
-  const wrap = $('model-picker');
-  wrap.innerHTML = '';
-  MODELS.forEach((m, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'mpick-btn' + (i === currentModelIdx ? ' active' : '');
-    btn.innerHTML = `<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5">${modelIcon(m.id)}</svg><span>${m.label}</span>`;
-    btn.onclick = () => { currentModelIdx = i; buildModelPicker(); replaceModel(); };
-    wrap.appendChild(btn);
+// ─── Dropdown ─────────────────────────────────────────────
+function buildDropdown() {
+  const dd = $('model-dropdown');
+  dd.innerHTML = '';
+  modelList.forEach((m, i) => {
+    const item = document.createElement('div');
+    item.className = 'dropdown-item' + (i === currentModelIdx ? ' active' : '');
+    item.dataset.idx = i;
+    item.innerHTML = `
+      <div class="item-icon">${fileEmoji(m.file)}</div>
+      <div class="item-info">
+        <span class="item-name">${m.label || m.id}</span>
+        <span class="item-file">${m.file}</span>
+      </div>
+      <svg class="item-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 8l3.5 3.5L13 4.5" stroke="#6c47ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    item.addEventListener('click', () => selectModel(i));
+    dd.appendChild(item);
   });
 }
 
-function modelIcon(id) {
-  if(id==='box')    return '<rect x="6" y="6" width="16" height="16" rx="2"/><line x1="6" y1="12" x2="22" y2="12"/><line x1="14" y1="6" x2="14" y2="22"/>';
-  if(id==='sphere') return '<circle cx="14" cy="14" r="9"/><ellipse cx="14" cy="14" rx="4" ry="9"/>';
-  if(id==='chair')  return '<rect x="7" y="12" width="14" height="2" rx="1"/><line x1="10" y1="14" x2="10" y2="22"/><line x1="18" y1="14" x2="18" y2="22"/><rect x="7" y="6" width="2" height="8"/>';
-  if(id==='table')  return '<rect x="4" y="11" width="20" height="3" rx="1"/><line x1="7" y1="14" x2="7" y2="22"/><line x1="21" y1="14" x2="21" y2="22"/>';
-  return '';
+function showDropdownError(msg) {
+  $('model-dropdown').innerHTML = `
+    <div class="dropdown-loading" style="flex-direction:column;gap:6px;color:#ff8877;padding:18px;">
+      <span>⚠️</span><span style="font-size:0.75rem;">${msg}</span>
+    </div>`;
 }
 
-function replaceModel() {
+function fileEmoji(filename) {
+  // simple heuristic by filename
+  const n = filename.toLowerCase();
+  if (n.includes('chair') || n.includes('стул')) return '🪑';
+  if (n.includes('table') || n.includes('стол')) return '🪞';
+  if (n.includes('lamp') || n.includes('лампа') || n.includes('light')) return '💡';
+  if (n.includes('car') || n.includes('машина')) return '🚗';
+  if (n.includes('tree') || n.includes('дерево') || n.includes('plant')) return '🌿';
+  if (n.includes('box') || n.includes('cube')) return '📦';
+  return '📦';
+}
+
+async function selectModel(idx) {
+  currentModelIdx = idx;
+  // update active state in dropdown
+  document.querySelectorAll('.dropdown-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  $('model-dropdown-wrap').classList.remove('visible');
+
+  // If already placed — swap immediately
+  if (placedObject) {
+    await swapPlacedModel();
+  }
+}
+
+// ─── GLB loading ──────────────────────────────────────────
+async function loadModel(idx) {
+  const entry = modelList[idx];
+  if (!entry) return null;
+
+  if (modelCache[entry.file]) {
+    return modelCache[entry.file].clone();
+  }
+
+  showLoadingOverlay(`Загрузка: ${entry.label || entry.file}`);
+
+  return new Promise((resolve, reject) => {
+    loader.load(
+      `models/${entry.file}`,
+      gltf => {
+        hideLoadingOverlay();
+        const root = gltf.scene;
+        // Auto-scale: fit into ~0.5m bounding box
+        const box = new THREE.Box3().setFromObject(root);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) root.scale.setScalar(0.5 / maxDim);
+        // Re-center at origin bottom
+        const box2 = new THREE.Box3().setFromObject(root);
+        const center = box2.getCenter(new THREE.Vector3());
+        root.position.sub(center);
+        root.position.y += (box2.getSize(new THREE.Vector3()).y / 2);
+
+        root.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+        modelCache[entry.file] = root;
+        resolve(root.clone());
+      },
+      undefined,
+      err => {
+        hideLoadingOverlay();
+        showError(`Ошибка загрузки: ${entry.file}`);
+        reject(err);
+      }
+    );
+  });
+}
+
+async function swapPlacedModel() {
   if (!placedObject) return;
-  const parent = placedObject.parent;
   const pos = placedObject.position.clone();
-  const rot = placedObject.rotation.clone();
-  const sc = placedObject.scale.clone();
-  parent.remove(placedObject);
-  placedObject = MODELS[currentModelIdx].build();
-  placedObject.position.copy(pos);
-  placedObject.rotation.copy(rot);
-  placedObject.scale.copy(sc);
-  parent.add(placedObject);
+  const rotY = placedObject.rotation.y;
+  scene.remove(placedObject);
+  placedObject = null;
+
+  try {
+    const newObj = await loadModel(currentModelIdx);
+    if (!newObj) return;
+    placedObject = newObj;
+    placedObject.position.copy(pos);
+    placedObject.rotation.y = rotY;
+    placedObject.scale.setScalar(scaleVal);
+    scene.add(placedObject);
+  } catch(e) { /* error shown by loadModel */ }
 }
 
-// ─── Three.js + WebXR init ─────────────────────────────────
+function showLoadingOverlay(text) {
+  $('loading-label').textContent = text;
+  $('loading-overlay').classList.add('show');
+}
+function hideLoadingOverlay() {
+  $('loading-overlay').classList.remove('show');
+}
+function showError(msg) {
+  const t = $('error-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
 
+// ─── Three.js + WebXR init ────────────────────────────────
 async function startAR() {
   $('splash').style.display = 'none';
 
   if (!navigator.xr) { showNoXR(); return; }
-
   const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
   if (!supported) { showNoXR(); return; }
 
-  // Renderer
   renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
@@ -441,41 +570,35 @@ async function startAR() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  // Scene
   scene = new THREE.Scene();
   clock = new THREE.Clock();
-
-  // Camera
   camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.01, 20);
 
-  // Lighting
-  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-  scene.add(ambient);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
   const dir = new THREE.DirectionalLight(0xffffff, 1.4);
   dir.position.set(2, 4, 2);
   dir.castShadow = true;
-  dir.shadow.mapSize.set(1024,1024);
+  dir.shadow.mapSize.set(1024, 1024);
   scene.add(dir);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.4);
+  fill.position.set(-2, 1, -2);
+  scene.add(fill);
 
-  // Shadow plane
   const shadowPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(5, 5),
-    new THREE.ShadowMaterial({ opacity: 0.25 })
+    new THREE.ShadowMaterial({ opacity: 0.3 })
   );
-  shadowPlane.rotation.x = -Math.PI/2;
+  shadowPlane.rotation.x = -Math.PI / 2;
   shadowPlane.receiveShadow = true;
   scene.add(shadowPlane);
 
-  // Reticle
   reticle = makeReticle();
   reticle.visible = false;
   scene.add(reticle);
 
-  buildModelPicker();
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
 
-  // Start XR session
   xrSession = await navigator.xr.requestSession('immersive-ar', {
     requiredFeatures: ['hit-test'],
     optionalFeatures: ['dom-overlay'],
@@ -493,7 +616,10 @@ async function startAR() {
     $('ui-overlay').classList.remove('active');
     $('splash').style.display = 'flex';
     isPlaced = false;
+    placedObject = null;
     hitTestSource = null;
+    lastYaw = 0;
+    autoRotate = false;
   });
 
   renderer.setAnimationLoop(onFrame);
@@ -506,20 +632,19 @@ function makeReticle() {
     new THREE.RingGeometry(0.06, 0.075, 32),
     new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
   );
-  ring.rotation.x = -Math.PI/2;
+  ring.rotation.x = -Math.PI / 2;
   g.add(ring);
   const dot = new THREE.Mesh(
     new THREE.CircleGeometry(0.01, 16),
     new THREE.MeshBasicMaterial({ color: 0x6c47ff, side: THREE.DoubleSide })
   );
-  dot.rotation.x = -Math.PI/2;
+  dot.rotation.x = -Math.PI / 2;
   dot.position.y = 0.001;
   g.add(dot);
   return g;
 }
 
 // ─── Frame loop ───────────────────────────────────────────
-
 function onFrame(time, frame) {
   if (!frame) { renderer.render(scene, camera); return; }
 
@@ -544,32 +669,35 @@ function onFrame(time, frame) {
   }
 
   if (placedObject && autoRotate) {
-    placedObject.rotation.y += clock.getDelta() * 1.5;
+    placedObject.rotation.y += clock.getDelta() * 1.2;
   }
 
   renderer.render(scene, camera);
 }
 
 // ─── Interaction ──────────────────────────────────────────
-
 function setupInteraction() {
   const overlay = $('ui-overlay');
 
   overlay.addEventListener('click', e => {
-    if (e.target.closest('#toolbar') || e.target.closest('#model-picker') || e.target.closest('#scale-slider')) return;
+    if (e.target.closest('#toolbar') || e.target.closest('#model-dropdown-wrap') || e.target.closest('#scale-slider')) return;
+    // Close dropdown if open
+    if ($('model-dropdown-wrap').classList.contains('visible')) {
+      $('model-dropdown-wrap').classList.remove('visible');
+      return;
+    }
     if (!reticle.visible) return;
     placeModel();
   });
 
-  // Touch swipe to rotate
   overlay.addEventListener('touchstart', e => {
-    if (e.target.closest('#toolbar') || e.target.closest('#model-picker') || e.target.closest('#scale-slider')) return;
+    if (e.target.closest('#toolbar') || e.target.closest('#model-dropdown-wrap') || e.target.closest('#scale-slider')) return;
     touchStartX = e.touches[0].clientX;
   }, { passive: true });
 
   overlay.addEventListener('touchmove', e => {
     if (!isPlaced || !placedObject) return;
-    if (e.target.closest('#toolbar') || e.target.closest('#model-picker') || e.target.closest('#scale-slider')) return;
+    if (e.target.closest('#toolbar') || e.target.closest('#model-dropdown-wrap') || e.target.closest('#scale-slider')) return;
     const dx = e.touches[0].clientX - touchStartX;
     placedObject.rotation.y = lastYaw + dx * 0.01;
   }, { passive: true });
@@ -578,17 +706,15 @@ function setupInteraction() {
     if (placedObject) lastYaw = placedObject.rotation.y;
   }, { passive: true });
 
-  // Scale
   $('scaleInput').addEventListener('input', e => {
     scaleVal = parseFloat(e.target.value);
     $('scale-val').textContent = scaleVal.toFixed(1) + '×';
     if (placedObject) placedObject.scale.setScalar(scaleVal);
   });
 
-  // Toolbar
-  $('btn-pick').addEventListener('click', () => {
-    const mp = $('model-picker');
-    mp.classList.toggle('visible');
+  $('btn-pick').addEventListener('click', e => {
+    e.stopPropagation();
+    $('model-dropdown-wrap').classList.toggle('visible');
   });
 
   $('btn-rotate').addEventListener('click', () => {
@@ -615,13 +741,25 @@ function setupInteraction() {
   });
 }
 
-function placeModel() {
+async function placeModel() {
+  if (modelList.length === 0) {
+    showError('Список моделей не загружен');
+    return;
+  }
+
   if (placedObject) {
     scene.remove(placedObject);
     placedObject = null;
   }
 
-  placedObject = MODELS[currentModelIdx].build();
+  let obj;
+  try {
+    obj = await loadModel(currentModelIdx);
+  } catch(e) { return; }
+
+  if (!obj) return;
+
+  placedObject = obj;
   placedObject.position.copy(reticle.position);
   placedObject.quaternion.copy(reticle.quaternion);
   placedObject.scale.setScalar(scaleVal);
@@ -633,24 +771,23 @@ function placeModel() {
   $('status-bar').textContent = 'Модель размещена · проведите для вращения';
   document.querySelectorAll('.placed-only').forEach(b => b.classList.add('enabled'));
 
-  // Pulse animation
-  let sc = 0;
+  // Bounce in
+  let t = 0;
+  const baseScale = scaleVal;
   const bounce = () => {
-    sc += 0.08;
-    if (sc >= 1) { placedObject.scale.setScalar(scaleVal); return; }
-    const s = scaleVal * (1 + Math.sin(sc * Math.PI) * 0.3);
-    placedObject.scale.setScalar(s);
+    t += 0.08;
+    if (t >= 1) { if(placedObject) placedObject.scale.setScalar(baseScale); return; }
+    if (placedObject) placedObject.scale.setScalar(baseScale * (1 + Math.sin(t * Math.PI) * 0.25));
     requestAnimationFrame(bounce);
   };
   bounce();
 }
 
-// ─── Fallback 3D viewer (no AR) ───────────────────────────
-
+// ─── Fallback 3D viewer ───────────────────────────────────
 async function startFallback() {
   $('no-webxr').classList.remove('show');
 
-  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, alpha: false });
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.setClearColor(0x111118);
@@ -659,26 +796,37 @@ async function startFallback() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111118);
   camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 20);
-  camera.position.set(0.5, 0.6, 1.0);
-  camera.lookAt(0, 0.15, 0);
+  camera.position.set(0.6, 0.6, 1.0);
+  camera.lookAt(0, 0.2, 0);
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambient);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const dir = new THREE.DirectionalLight(0xffffff, 1.5);
   dir.position.set(2, 4, 2);
   scene.add(dir);
-
-  const grid = new THREE.GridHelper(2, 20, 0x333355, 0x222233);
-  scene.add(grid);
-
-  const obj = MODELS[0].build();
-  obj.position.y = 0.1;
-  scene.add(obj);
+  scene.add(new THREE.GridHelper(2, 20, 0x333355, 0x222233));
 
   $('canvas-wrap').classList.add('active');
+  $('ui-overlay').classList.add('active');
 
-  let yaw = 0;
-  let lx = null;
+  // Load first model
+  let obj = null;
+  if (modelList.length > 0) {
+    try {
+      obj = await loadModel(0);
+    } catch(e) {}
+  }
+  if (!obj) {
+    // fallback primitive
+    obj = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3,0.3,0.3),
+      new THREE.MeshStandardMaterial({ color: 0x6c47ff })
+    );
+  }
+  obj.position.y = 0.15;
+  scene.add(obj);
+  placedObject = obj;
+
+  let yaw = 0, lx = null;
   $('c').addEventListener('touchstart', e => { lx = e.touches[0].clientX; }, { passive: true });
   $('c').addEventListener('touchmove', e => {
     if (lx === null) return;
@@ -686,25 +834,26 @@ async function startFallback() {
     lx = e.touches[0].clientX;
   }, { passive: true });
 
+  // Allow model selection in fallback too
+  setupInteraction();
+
   renderer.setAnimationLoop(() => {
-    yaw += 0.005;
-    obj.rotation.y = yaw;
+    yaw += 0.004;
+    if (obj) obj.rotation.y = yaw;
     renderer.render(scene, camera);
   });
 }
 
-function showNoXR() {
-  $('no-webxr').classList.add('show');
-}
+function showNoXR() { $('no-webxr').classList.add('show'); }
 
 // ─── Entry ────────────────────────────────────────────────
-
+loadModelList();
 $('btn-start').addEventListener('click', startAR);
 $('btn-fallback').addEventListener('click', startFallback);
 
 window.addEventListener('resize', () => {
   if (!renderer) return;
-  camera.aspect = innerWidth/innerHeight;
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
