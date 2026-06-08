@@ -538,12 +538,12 @@ import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.co
 // ── Вставь сюда свой Firebase конфиг ──────────────────────
 // Консоль Firebase → Project Settings → Your apps → Config
 const firebaseConfig = {
-  apiKey: "AIzaSyBwcFdCD6Wvv2CbKYWHUSAyD6Dde_egPtg",
-  authDomain: "sleeplessdog-1381f.firebaseapp.com",
-  projectId: "sleeplessdog-1381f",
-  storageBucket: "sleeplessdog-1381f.firebasestorage.app",
-  messagingSenderId: "304058036548",
-  appId: "1:304058036548:web:af56e26d91e7712649a711"
+  apiKey:            "REPLACE_API_KEY",
+  authDomain:        "REPLACE_PROJECT_ID.firebaseapp.com",
+  projectId:         "REPLACE_PROJECT_ID",
+  storageBucket:     "REPLACE_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_SENDER_ID",
+  appId:             "REPLACE_APP_ID"
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
@@ -1054,8 +1054,8 @@ async function startFallback() {
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111118);
-  camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 20);
-  camera.position.set(0.6, 0.6, 1.0);
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
+  camera.position.set(0, 0.4, 1.2);
   camera.lookAt(0, 0.2, 0);
 
   const pmrem2 = new THREE.PMREMGenerator(renderer);
@@ -1072,12 +1072,29 @@ async function startFallback() {
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
 
-  // Hide AR-only UI elements in fallback viewer mode
+  // Hide AR-only UI, show viewer UI
   $('reticle-hint').style.display = 'none';
-  $('status-bar').textContent = 'Проведите пальцем для вращения';
+  $('status-bar').textContent = '1 палец — вращение · 2 пальца — перемещение';
   $('scale-slider').classList.add('visible');
+  $('btn-reset').style.display = 'none';
+  $('btn-rotate').style.display = 'none';
 
-  // Load selected model (currentModelIdx set by library)
+  // Выйти — вернуть в главное меню
+  const exitHandler = () => {
+    renderer.setAnimationLoop(null);
+    renderer.dispose();
+    renderer = null;
+    scene = null;
+    placedObject = null;
+    $('canvas-wrap').classList.remove('active');
+    $('ui-overlay').classList.remove('active');
+    $('btn-reset').style.display = '';
+    $('btn-rotate').style.display = '';
+    $('splash').style.display = 'flex';
+  };
+  $('btn-exit').onclick = exitHandler;
+
+  // Load selected model
   let obj = null;
   if (modelList.length > 0) {
     try {
@@ -1085,30 +1102,79 @@ async function startFallback() {
     } catch(e) {}
   }
   if (!obj) {
-    // fallback primitive
     obj = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3,0.3,0.3),
+      new THREE.BoxGeometry(0.3, 0.3, 0.3),
       new THREE.MeshStandardMaterial({ color: 0x6c47ff })
     );
   }
-  obj.position.y = 0.15;
   scene.add(obj);
   placedObject = obj;
 
-  let yaw = 0, lx = null;
-  $('c').addEventListener('touchstart', e => { lx = e.touches[0].clientX; }, { passive: true });
-  $('c').addEventListener('touchmove', e => {
-    if (lx === null) return;
-    yaw += (e.touches[0].clientX - lx) * 0.01;
-    lx = e.touches[0].clientX;
+  // ── Touch controls ──────────────────────────────────────
+  // 1 finger: rotate model (yaw + pitch)
+  // 2 fingers: pan model (move left/right/up/down)
+
+  let touches = {};
+  let prevDist = null;
+
+  const cvs = $('c');
+
+  cvs.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
+  }, { passive: false });
+
+  cvs.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const ids = Object.keys(touches);
+
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      const prev = touches[t.identifier];
+      if (!prev) return;
+      const dx = t.clientX - prev.x;
+      const dy = t.clientY - prev.y;
+      if (obj) {
+        obj.rotation.y += dx * 0.012;
+        obj.rotation.x += dy * 0.012;
+        obj.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, obj.rotation.x));
+      }
+      touches[t.identifier] = { x: t.clientX, y: t.clientY };
+
+    } else if (e.touches.length === 2) {
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const p0 = touches[t0.identifier] || { x: t0.clientX, y: t0.clientY };
+      const p1 = touches[t1.identifier] || { x: t1.clientX, y: t1.clientY };
+
+      // Pan: midpoint delta
+      const midX = (t0.clientX + t1.clientX) / 2;
+      const midY = (t0.clientY + t1.clientY) / 2;
+      const prevMidX = (p0.x + p1.x) / 2;
+      const prevMidY = (p0.y + p1.y) / 2;
+      const panSpeed = 0.002;
+      if (obj) {
+        obj.position.x += (midX - prevMidX) * panSpeed;
+        obj.position.y -= (midY - prevMidY) * panSpeed;
+      }
+
+      touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
+      touches[t1.identifier] = { x: t1.clientX, y: t1.clientY };
+    }
+  }, { passive: false });
+
+  cvs.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) delete touches[t.identifier];
   }, { passive: true });
 
-  // Allow model selection in fallback too
-  setupInteraction();
+  // Scale slider controls model scale
+  $('scaleInput').oninput = e => {
+    scaleVal = parseFloat(e.target.value);
+    $('scale-val').textContent = scaleVal.toFixed(1) + '×';
+    if (obj) obj.scale.setScalar(scaleVal);
+  };
 
   renderer.setAnimationLoop(() => {
-    yaw += 0.004;
-    if (obj) obj.rotation.y = yaw;
     renderer.render(scene, camera);
   });
 }
