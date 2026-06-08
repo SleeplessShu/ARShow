@@ -530,6 +530,32 @@
 }
 </script>
 
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+// Консоль Firebase → Project Settings → Your apps → Config
+const firebaseConfig = {
+  apiKey: "AIzaSyBwcFdCD6Wvv2CbKYWHUSAyD6Dde_egPtg",
+  authDomain: "sleeplessdog-1381f.firebaseapp.com",
+  projectId: "sleeplessdog-1381f",
+  storageBucket: "sleeplessdog-1381f.firebasestorage.app",
+  messagingSenderId: "304058036548",
+  appId: "1:304058036548:web:af56e26d91e7712649a711"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const storage = getStorage(firebaseApp);
+
+// Экспортируем в window чтобы основной модуль мог использовать
+window._fbStorage = storage;
+window._fbRef = ref;
+window._fbListAll = listAll;
+window._fbGetDownloadURL = getDownloadURL;
+window._fbReady = true;
+</script>
+
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -553,16 +579,50 @@ loader.setDRACOLoader(draco);
 
 const $ = id => document.getElementById(id);
 
-// ─── Load models/index.json ───────────────────────────────
+// ─── Load model list from Firebase Storage ────────────────
 async function loadModelList() {
+  // Wait for Firebase to be ready (loaded in separate module tag)
+  let waited = 0;
+  while (!window._fbReady && waited < 5000) {
+    await new Promise(r => setTimeout(r, 50));
+    waited += 50;
+  }
+  if (!window._fbReady) {
+    showDropdownError('Firebase не инициализирован. Проверь конфиг.');
+    return;
+  }
+
   try {
-    const res = await fetch('models/index.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    modelList = await res.json();
-    if (!Array.isArray(modelList) || modelList.length === 0) throw new Error('Пустой список');
+    const modelsRef = window._fbRef(window._fbStorage, 'models');
+    const result = await window._fbListAll(modelsRef);
+
+    if (result.items.length === 0) {
+      showDropdownError('Папка models/ в Storage пуста.');
+      return;
+    }
+
+    // Build model list: filename without extension = label
+    modelList = result.items
+      .filter(item => item.name.toLowerCase().endsWith('.glb'))
+      .map(item => {
+        const label = item.name.replace(/\.glb$/i, '').replace(/[-_]/g, ' ');
+        return {
+          id:    item.name,
+          label: label.charAt(0).toUpperCase() + label.slice(1),
+          file:  item.name,
+          // storageRef used later to get download URL on demand
+          _ref:  item
+        };
+      });
+
+    if (modelList.length === 0) {
+      showDropdownError('Нет GLB файлов в папке models/.');
+      return;
+    }
+
     buildDropdown();
   } catch (e) {
-    showDropdownError(`Не удалось загрузить models/index.json: ${e.message}`);
+    showDropdownError(`Ошибка Storage: ${e.message}`);
   }
 }
 
@@ -622,6 +682,15 @@ async function selectModel(idx) {
 }
 
 // ─── GLB loading ──────────────────────────────────────────
+async function resolveUrl(entry) {
+  // If URL already fetched, return cached
+  if (entry._url) return entry._url;
+  // Get download URL from Firebase Storage
+  const url = await window._fbGetDownloadURL(entry._ref);
+  entry._url = url;
+  return url;
+}
+
 async function loadModel(idx) {
   const entry = modelList[idx];
   if (!entry) return null;
@@ -632,9 +701,11 @@ async function loadModel(idx) {
 
   showLoadingOverlay(`Загрузка: ${entry.label || entry.file}`);
 
+  const url = await resolveUrl(entry);
+
   return new Promise((resolve, reject) => {
     loader.load(
-      `models/${entry.file}`,
+      url,
       gltf => {
         hideLoadingOverlay();
         const root = gltf.scene;
@@ -1156,8 +1227,9 @@ function renderMiniPreview(idx, modelEntry) {
   if (modelCache[modelEntry.file]) {
     doRender(modelCache[modelEntry.file]);
   } else {
+    resolveUrl(modelEntry).then(url => {
     loader.load(
-      `models/${modelEntry.file}`,
+      url,
       gltf => {
         const root = gltf.scene;
         const rawBox = new THREE.Box3().setFromObject(root);
@@ -1184,6 +1256,7 @@ function renderMiniPreview(idx, modelEntry) {
       undefined,
       () => { /* preview load error - leave emoji */ }
     );
+    }).catch(() => { /* preview URL error - leave emoji */ });
   }
 }
 
