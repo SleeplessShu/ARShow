@@ -535,14 +535,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
+// ── Вставь сюда свой Firebase конфиг ──────────────────────
 // Консоль Firebase → Project Settings → Your apps → Config
 const firebaseConfig = {
-  apiKey: "AIzaSyBwcFdCD6Wvv2CbKYWHUSAyD6Dde_egPtg",
-  authDomain: "sleeplessdog-1381f.firebaseapp.com",
-  projectId: "sleeplessdog-1381f",
-  storageBucket: "sleeplessdog-1381f.firebasestorage.app",
-  messagingSenderId: "304058036548",
-  appId: "1:304058036548:web:af56e26d91e7712649a711"
+  apiKey:            "REPLACE_API_KEY",
+  authDomain:        "REPLACE_PROJECT_ID.firebaseapp.com",
+  projectId:         "REPLACE_PROJECT_ID",
+  storageBucket:     "REPLACE_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_SENDER_ID",
+  appId:             "REPLACE_APP_ID"
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
@@ -1071,7 +1072,12 @@ async function startFallback() {
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
 
-  // Load first model
+  // Hide AR-only UI elements in fallback viewer mode
+  $('reticle-hint').style.display = 'none';
+  $('status-bar').textContent = 'Проведите пальцем для вращения';
+  $('scale-slider').classList.add('visible');
+
+  // Load selected model (currentModelIdx set by library)
   let obj = null;
   if (modelList.length > 0) {
     try {
@@ -1255,9 +1261,17 @@ function renderMiniPreview(idx, modelEntry) {
         doRender(root);
       },
       undefined,
-      () => { /* preview load error - leave emoji */ }
+      (err) => {
+        console.error('Preview load error:', modelEntry.file, err);
+        const spin = document.getElementById(`prev-spin-${idx}`);
+        if (spin) spin.textContent = '⚠️';
+      }
     );
-    }).catch(() => { /* preview URL error - leave emoji */ });
+    }).catch((err) => {
+      console.error('Preview URL error:', modelEntry.file, err);
+      const spin = document.getElementById(`prev-spin-${idx}`);
+      if (spin) spin.textContent = '⚠️';
+    });
   }
 }
 
