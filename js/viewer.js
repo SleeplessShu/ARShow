@@ -1,20 +1,16 @@
-// js/viewer.js — 3D просмотр без AR (fallback)
+// js/viewer.js — 3D просмотр без AR
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as State from './state.js';
 import { loadModel } from './models.js';
 import { setStatus } from './ui.js';
-import { openLibrary, closeLibrary } from './library.js';
 import { startAR } from './ar.js';
-import { showViewerARButton, hideViewerARButton } from './main.js';
 
 const $ = id => document.getElementById(id);
-
 let _obj = null;
 
-// ── Запуск 3D просмотра ──────────────────────────────────
 export async function startFallback() {
-  $('splash').style.display    = 'none';
+  $('splash').style.display = 'none';
   $('no-webxr').classList.remove('show');
 
   const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
@@ -40,57 +36,41 @@ export async function startFallback() {
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   const dir = new THREE.DirectionalLight(0xffffff, 1.5);
-  dir.position.set(2, 4, 2);
-  scene.add(dir);
-  // Сетка убрана
+  dir.position.set(2, 4, 2); scene.add(dir);
 
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
 
-  $('reticle-hint').style.display = 'none';
+  // Скрываем AR-элементы, показываем кнопки вьювера
+  $('reticle-hint').style.display  = 'none';
   $('scale-slider').classList.remove('visible');
-  $('btn-reset').style.display  = 'none';
-  $('btn-rotate').style.display = 'none';
+  $('toolbar').style.display       = 'none';
+  $('viewer-toolbar').style.display = 'flex';
   setStatus('1 палец — вращение · 2 пальца — масштаб / перемещение');
 
-  $('btn-exit').onclick = exitToLibrary;
-  $('btn-pick').onclick = e => { e.stopPropagation(); openLibrary(); };
-
-  // Кнопки внутри библиотеки — переопределяем для вьювера
-  $('lib-btn-view').onclick = async () => {
-    const mod = await import('./library.js');
-    if (mod.librarySelectedIdx < 0) return;
-    State.setCurrentModelIdx(mod.librarySelectedIdx);
-    mod.closeLibrary();
-    await swapViewerModel();
-  };
-
-  $('lib-btn-ar').onclick = async () => {
-    const mod = await import('./library.js');
-    if (mod.librarySelectedIdx < 0) return;
-    State.setCurrentModelIdx(mod.librarySelectedIdx);
-    mod.closeLibrary();
+  // Кнопка AR
+  $('viewer-btn-ar').onclick = () => {
     exitFallback();
     startAR();
   };
+  // Кнопка Выйти
+  $('viewer-btn-exit').onclick = exitFallback;
 
   // Загрузить модель
   try { _obj = await loadModel(State.currentModelIdx); } catch (e) { _obj = null; }
   if (!_obj) {
     _obj = new THREE.Mesh(
       new THREE.BoxGeometry(0.3, 0.3, 0.3),
-      new THREE.MeshStandardMaterial({ color: 0x6c47ff })
+      new THREE.MeshStandardMaterial({ color: 0x555555 })
     );
   }
   scene.add(_obj);
   State.setPlacedObject(_obj);
 
   setupViewerTouches();
-  showViewerARButton();
   renderer.setAnimationLoop(() => renderer.render(scene, camera));
 }
 
-// ── Заменить модель ───────────────────────────────────────
 async function swapViewerModel() {
   if (!State.scene) return;
   let newObj = null;
@@ -107,14 +87,7 @@ async function swapViewerModel() {
   _obj = newObj;
 }
 
-// ── Выйти в библиотеку (models tab) ─────────────────────
-function exitToLibrary() {
-  exitFallback();
-}
-
-// ── Полный выход (используется при переходе в AR) ─────────
 export function exitFallback() {
-  hideViewerARButton();
   if (State.renderer) {
     State.renderer.setAnimationLoop(null);
     State.renderer.dispose();
@@ -126,18 +99,14 @@ export function exitFallback() {
 
   $('canvas-wrap').classList.remove('active');
   $('ui-overlay').classList.remove('active');
+  $('viewer-toolbar').style.display = 'none';
+  $('toolbar').style.display        = '';
   $('scale-slider').classList.add('visible');
-  $('btn-reset').style.display  = '';
-  $('btn-rotate').style.display = '';
-  $('btn-pick').onclick  = null;
-  $('btn-exit').onclick  = null;
-  $('lib-btn-view').onclick = null;
-  $('lib-btn-ar').onclick   = null;
-  // Показать главный экран (вкладка models уже активна)
+  $('viewer-btn-ar').onclick   = null;
+  $('viewer-btn-exit').onclick = null;
   $('splash').style.display = 'flex';
 }
 
-// ── Touch управление ──────────────────────────────────────
 function setupViewerTouches() {
   const cvs     = $('c');
   const touches = {};
@@ -149,15 +118,13 @@ function setupViewerTouches() {
 
   cvs.addEventListener('touchmove', e => {
     e.preventDefault();
-
     if (e.touches.length === 1) {
       const t    = e.touches[0];
       const prev = touches[t.identifier];
       if (!prev || !_obj) { touches[t.identifier] = { x: t.clientX, y: t.clientY }; return; }
-      const dx = t.clientX - prev.x;
-      const dy = t.clientY - prev.y;
-      _obj.rotation.y += dx * 0.012;
-      _obj.rotation.x  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, _obj.rotation.x + dy * 0.012));
+      _obj.rotation.y += (t.clientX - prev.x) * 0.012;
+      _obj.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2,
+        _obj.rotation.x + (t.clientY - prev.y) * 0.012));
       touches[t.identifier] = { x: t.clientX, y: t.clientY };
 
     } else if (e.touches.length === 2) {
@@ -165,21 +132,17 @@ function setupViewerTouches() {
       const p0 = touches[t0.identifier] || { x: t0.clientX, y: t0.clientY };
       const p1 = touches[t1.identifier] || { x: t1.clientX, y: t1.clientY };
 
-      // Pinch — масштаб
       const dist     = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
       const prevDist = Math.hypot(p0.x - p1.x, p0.y - p1.y);
       if (prevDist > 0 && _obj) {
-        const newScale = Math.max(0.05, Math.min(5, State.scaleVal * (dist / prevDist)));
-        State.setScaleVal(newScale);
-        _obj.scale.setScalar(newScale);
+        const s = Math.max(0.05, Math.min(5, State.scaleVal * (dist / prevDist)));
+        State.setScaleVal(s);
+        _obj.scale.setScalar(s);
       }
-
-      // Pan — перемещение
       if (_obj) {
-        _obj.position.x += (( t0.clientX + t1.clientX) / 2 - (p0.x + p1.x) / 2) * 0.002;
-        _obj.position.y -= (( t0.clientY + t1.clientY) / 2 - (p0.y + p1.y) / 2) * 0.002;
+        _obj.position.x += ((t0.clientX+t1.clientX)/2 - (p0.x+p1.x)/2) * 0.002;
+        _obj.position.y -= ((t0.clientY+t1.clientY)/2 - (p0.y+p1.y)/2) * 0.002;
       }
-
       touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
       touches[t1.identifier] = { x: t1.clientX, y: t1.clientY };
     }
