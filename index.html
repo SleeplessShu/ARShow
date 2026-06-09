@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sleepless Dog</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ── Главный экран ── -->
+<div id="splash">
+  <div class="splash-header">
+    <div class="brand-logo">
+      <svg viewBox="0 0 40 40" fill="none" width="36" height="36">
+        <circle cx="20" cy="20" r="18" stroke="#d0d0d0" stroke-width="1.5" opacity="0.3"/>
+        <path d="M10 26 C10 18 14 12 20 12 C26 12 30 18 30 26" stroke="#d0d0d0" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <circle cx="15" cy="20" r="2" fill="#d0d0d0"/>
+        <circle cx="25" cy="20" r="2" fill="#d0d0d0"/>
+        <path d="M17 28 C17 28 18.5 30 20 30 C21.5 30 23 28 23 28" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <span class="brand-name">Sleepless Dog</span>
+  </div>
+
+  <nav class="tabs" id="main-tabs">
+    <button class="tab active" data-tab="models">Models</button>
+    <button class="tab"        data-tab="reels">Reels</button>
+    <button class="tab"        data-tab="applications">Applications</button>
+    <button class="tab"        data-tab="animation">Animation</button>
+  </nav>
+
+  <div class="tab-content" id="tab-models">
+    <!-- Библиотека моделей встроена прямо в вкладку -->
+    <div class="models-grid" id="models-grid">
+      <div class="models-loading">
+        <div class="mini-spin"></div>
+        <span>Загрузка моделей...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content hidden" id="tab-reels">
+    <div class="stub-page" id="page-reels"></div>
+  </div>
+
+  <div class="tab-content hidden" id="tab-applications">
+    <div class="stub-page" id="page-applications"></div>
+  </div>
+
+  <div class="tab-content hidden" id="tab-animation">
+    <div class="stub-page" id="page-animation"></div>
+  </div>
+</div>
+
+<!-- ── No WebXR ── -->
+<div id="no-webxr">
+  <h2>⚠️ AR недоступен</h2>
+  <p>Ваш браузер не поддерживает WebXR Hit Testing.<br>
+     Попробуйте <strong>Safari на iPhone (iOS 16+)</strong> или <strong>Chrome на Android</strong>.</p>
+  <p><a href="https://immersiveweb.dev/#supporttable" target="_blank">Таблица совместимости →</a></p>
+  <button id="btn-fallback">Открыть 3D просмотр</button>
+  <p class="fallback-mode">Режим предпросмотра без привязки к поверхности</p>
+</div>
+
+<!-- ── Canvas ── -->
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<!-- ── AR / Viewer overlay ── -->
+<div id="ui-overlay">
+  <div id="status-bar">Наводите на пол или стол...</div>
+
+  <div id="reticle-hint">
+    <div class="scan-ring"></div>
+    <span>Сканирование поверхности</span>
+  </div>
+
+  <div id="loading-overlay">
+    <div class="load-ring"></div>
+    <span id="loading-label">Загрузка модели...</span>
+  </div>
+
+  <div id="error-toast"></div>
+
+  <div id="scale-slider" class="visible">
+    <label>масштаб</label>
+    <input type="range" id="scaleInput" min="0.05" max="3" step="0.05" value="1" orient="vertical">
+    <span id="scale-val">1.0×</span>
+  </div>
+
+  <div id="model-dropdown-wrap">
+    <div id="model-dropdown">
+      <div class="dropdown-loading">
+        <div class="mini-spin"></div>
+        Загрузка списка...
+      </div>
+    </div>
+  </div>
+
+  <div id="toolbar">
+    <button class="tb-btn" id="btn-pick">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      Модель
+    </button>
+    <button class="tb-btn placed-only" id="btn-rotate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/>
+      </svg>
+      Вращение
+    </button>
+    <button class="tb-btn placed-only" id="btn-reset" style="color:#ff8844;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+      </svg>
+      Убрать
+    </button>
+    <button class="tb-btn" id="btn-exit" style="color:#ff5566;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+      Выйти
+    </button>
+  </div>
+</div>
+
+<!-- Three.js importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three":         "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
