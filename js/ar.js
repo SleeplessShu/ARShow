@@ -3,12 +3,11 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as State from './state.js';
 import { loadModel } from './models.js';
-import { setStatus, showError, enablePlacedButtons, disablePlacedButtons } from './ui.js';
+import { setStatus, showError } from './ui.js';
 import { setupARInteraction } from './interaction.js';
 
 const $ = id => document.getElementById(id);
 
-// ── Запуск AR ────────────────────────────────────────────
 export async function startAR() {
   $('splash').style.display = 'none';
 
@@ -27,28 +26,21 @@ export async function startAR() {
   const scene = new THREE.Scene();
   State.setScene(scene);
   State.setClock(new THREE.Clock());
-
   const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.01, 20);
   State.setCamera(camera);
 
-  // Environment map для металлических материалов
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
 
-  // Освещение
   scene.add(new THREE.AmbientLight(0xffffff, 0.7));
   const dir = new THREE.DirectionalLight(0xffffff, 1.4);
-  dir.position.set(2, 4, 2);
-  dir.castShadow = true;
-  dir.shadow.mapSize.set(1024, 1024);
-  scene.add(dir);
+  dir.position.set(2, 4, 2); dir.castShadow = true;
+  dir.shadow.mapSize.set(1024, 1024); scene.add(dir);
   const fill = new THREE.DirectionalLight(0xffffff, 0.4);
-  fill.position.set(-2, 1, -2);
-  scene.add(fill);
+  fill.position.set(-2, 1, -2); scene.add(fill);
 
-  // Плоскость для теней
   const shadowPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(5, 5),
     new THREE.ShadowMaterial({ opacity: 0.3 })
@@ -57,7 +49,6 @@ export async function startAR() {
   shadowPlane.receiveShadow = true;
   scene.add(shadowPlane);
 
-  // Прицел
   const reticle = makeReticle();
   reticle.visible = false;
   scene.add(reticle);
@@ -65,9 +56,15 @@ export async function startAR() {
 
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
-  $('scale-slider').classList.add('visible');
+  // Скрываем старый тулбар и ползунок
+  $('toolbar').style.display    = 'none';
+  $('scale-slider').classList.remove('visible');
+  // Показываем AR тулбар
+  $('ar-toolbar').style.display = 'flex';
+  // Сброс статуса
+  setStatus('Наводите на пол или стол...');
+  $('reticle-hint').style.display = 'flex';
 
-  // XR сессия
   const xrSession = await navigator.xr.requestSession('immersive-ar', {
     requiredFeatures: ['hit-test'],
     optionalFeatures: ['dom-overlay'],
@@ -83,72 +80,59 @@ export async function startAR() {
   State.setHitTestSource(hitSource);
 
   xrSession.addEventListener('end', onAREnd);
-
   renderer.setAnimationLoop(onFrame);
   setupARInteraction();
 }
 
-// ── Прицел ───────────────────────────────────────────────
 function makeReticle() {
-  const g    = new THREE.Group();
+  const g = new THREE.Group();
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.06, 0.075, 32),
     new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
   );
-  ring.rotation.x = -Math.PI / 2;
-  g.add(ring);
+  ring.rotation.x = -Math.PI / 2; g.add(ring);
   const dot = new THREE.Mesh(
     new THREE.CircleGeometry(0.01, 16),
-    new THREE.MeshBasicMaterial({ color: 0x6c47ff, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ color: 0xd0d0d0, side: THREE.DoubleSide })
   );
-  dot.rotation.x = -Math.PI / 2;
-  dot.position.y  = 0.001;
-  g.add(dot);
+  dot.rotation.x = -Math.PI / 2; dot.position.y = 0.001; g.add(dot);
   return g;
 }
 
-// ── Frame loop ───────────────────────────────────────────
 function onFrame(time, frame) {
   if (!frame) { State.renderer.render(State.scene, State.camera); return; }
 
   const refSpace = State.renderer.xr.getReferenceSpace();
-  const hits     = State.hitTestSource
-    ? frame.getHitTestResults(State.hitTestSource)
-    : [];
+  const hits     = State.hitTestSource ? frame.getHitTestResults(State.hitTestSource) : [];
 
   if (hits.length) {
     const pose = hits[0].getPose(refSpace);
     State.reticle.visible = true;
     State.reticle.matrix.fromArray(pose.transform.matrix);
     State.reticle.matrix.decompose(
-      State.reticle.position,
-      State.reticle.quaternion,
-      State.reticle.scale
+      State.reticle.position, State.reticle.quaternion, State.reticle.scale
     );
     if (!State.isPlaced) {
-      document.getElementById('reticle-hint').style.display = 'flex';
+      // Поверхность найдена — скрываем индикатор сканирования
+      $('reticle-hint').style.display = 'none';
       setStatus('Нажмите чтобы разместить модель');
     }
   } else {
     State.reticle.visible = false;
     if (!State.isPlaced) {
-      document.getElementById('reticle-hint').style.display = 'flex';
+      $('reticle-hint').style.display = 'flex';
       setStatus('Наводите на пол или стол...');
     }
-  }
-
-  if (State.placedObject && State.autoRotate) {
-    State.placedObject.rotation.y += State.clock.getDelta() * 1.2;
   }
 
   State.renderer.render(State.scene, State.camera);
 }
 
-// ── Конец AR сессии ───────────────────────────────────────
 function onAREnd() {
-  const $ = id => document.getElementById(id);
   $('canvas-wrap').classList.remove('active');
   $('ui-overlay').classList.remove('active');
+  $('ar-toolbar').style.display = 'none';
+  $('toolbar').style.display    = '';
   $('scale-slider').classList.add('visible');
   $('splash').style.display = 'flex';
   State.setIsPlaced(false);
@@ -156,13 +140,11 @@ function onAREnd() {
   State.setHitTestSource(null);
   State.setLastYaw(0);
   State.setAutoRotate(false);
-  disablePlacedButtons();
 }
 
-// ── Разместить модель ────────────────────────────────────
 export async function placeModel() {
   if (State.modelList.length === 0) { showError('Список моделей не загружен'); return; }
-  if (!State.reticle.visible) return;
+  if (!State.reticle?.visible) return;
 
   if (State.placedObject) {
     State.scene.remove(State.placedObject);
@@ -170,8 +152,7 @@ export async function placeModel() {
   }
 
   let obj;
-  try { obj = await loadModel(State.currentModelIdx); }
-  catch (e) { return; }
+  try { obj = await loadModel(State.currentModelIdx); } catch (e) { return; }
   if (!obj) return;
 
   obj.position.copy(State.reticle.position);
@@ -182,11 +163,10 @@ export async function placeModel() {
   State.setPlacedObject(obj);
   State.setIsPlaced(true);
 
-  document.getElementById('reticle-hint').style.display = 'none';
-  setStatus('Модель размещена · проведите для вращения');
-  enablePlacedButtons();
+  $('reticle-hint').style.display = 'none';
+  setStatus('Модель размещена · свайп для вращения');
 
-  // Анимация появления
+  // Bounce анимация
   let t = 0;
   const base = State.scaleVal;
   const bounce = () => {
@@ -198,7 +178,6 @@ export async function placeModel() {
   bounce();
 }
 
-// ── Заменить уже стоящую модель ──────────────────────────
 export async function swapPlacedModel() {
   if (!State.placedObject) return;
   const pos  = State.placedObject.position.clone();
@@ -213,9 +192,7 @@ export async function swapPlacedModel() {
     newObj.scale.setScalar(State.scaleVal);
     State.scene.add(newObj);
     State.setPlacedObject(newObj);
-  } catch (e) { /* ошибка показана в loadModel */ }
+  } catch (e) {}
 }
 
-function showNoXR() {
-  document.getElementById('no-webxr').classList.add('show');
-}
+function showNoXR() { $('no-webxr').classList.add('show'); }
