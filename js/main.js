@@ -198,4 +198,16 @@ $('btn-fallback').addEventListener('click', startFallback);
 $('lib-btn-ar').disabled   = true;
 $('lib-btn-view').disabled = true;
 
-loadModelList().then(() => buildModelsGrid());
+loadModelList()
+  .then(list => {
+    if (!list || list.length === 0) {
+      $('models-grid').innerHTML = '<div class="models-loading"><span>Нет моделей в Storage.</span></div>';
+      return;
+    }
+    buildModelsGrid();
+    buildDropdown();
+  })
+  .catch(err => {
+    console.error('loadModelList failed:', err);
+    $('models-grid').innerHTML = `<div class="models-loading"><span style="color:#ff6655;">Ошибка: ${err.message}</span></div>`;
+  });
