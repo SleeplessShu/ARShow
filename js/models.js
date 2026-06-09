@@ -4,7 +4,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { storage, ref, listAll, getDownloadURL } from './firebase.js';
 import * as State from './state.js';
-import { showLoadingOverlay, hideLoadingOverlay, showError, showDropdownError, buildDropdown } from './ui.js';
 
 const loader = new GLTFLoader();
 const draco  = new DRACOLoader();
@@ -15,38 +14,24 @@ export { loader };
 
 // ── Список моделей из Firebase Storage ───────────────────
 export async function loadModelList() {
-  try {
-    const modelsRef = ref(storage, 'models');
-    const result    = await listAll(modelsRef);
+  const modelsRef = ref(storage, 'models');
+  const result    = await listAll(modelsRef);
 
-    if (result.items.length === 0) {
-      showDropdownError('Папка models/ в Storage пуста.');
-      return;
-    }
+  const list = result.items
+    .filter(item => item.name.toLowerCase().endsWith('.glb'))
+    .map(item => {
+      const label = item.name.replace(/\.glb$/i, '').replace(/[-_]/g, ' ');
+      return {
+        id:    item.name,
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+        file:  item.name,
+        _ref:  item,
+        _url:  null,
+      };
+    });
 
-    const list = result.items
-      .filter(item => item.name.toLowerCase().endsWith('.glb'))
-      .map(item => {
-        const label = item.name.replace(/\.glb$/i, '').replace(/[-_]/g, ' ');
-        return {
-          id:    item.name,
-          label: label.charAt(0).toUpperCase() + label.slice(1),
-          file:  item.name,
-          _ref:  item,   // StorageReference — для getDownloadURL
-          _url:  null,   // кэш URL
-        };
-      });
-
-    if (list.length === 0) {
-      showDropdownError('Нет GLB файлов в папке models/.');
-      return;
-    }
-
-    State.setModelList(list);
-    buildDropdown();
-  } catch (e) {
-    showDropdownError(`Ошибка Storage: ${e.message}`);
-  }
+  State.setModelList(list);
+  return list;
 }
 
 // ── Получить download URL (с кэшем) ──────────────────────
@@ -100,22 +85,32 @@ export async function loadModel(idx) {
     return State.modelCache[entry.file].clone();
   }
 
-  showLoadingOverlay(`Загрузка: ${entry.label || entry.file}`);
+  // Показать оверлей загрузки напрямую без импорта ui.js
+  const label = document.getElementById('loading-label');
+  const overlay = document.getElementById('loading-overlay');
+  if (label) label.textContent = `Загрузка: ${entry.label || entry.file}`;
+  if (overlay) overlay.classList.add('show');
+
   const url = await resolveUrl(entry);
 
   return new Promise((resolve, reject) => {
     loader.load(
       url,
       gltf => {
-        hideLoadingOverlay();
+        if (overlay) overlay.classList.remove('show');
         const root = normalizeModel(gltf.scene, State.scene?.environment ?? null);
         State.modelCache[entry.file] = root;
         resolve(root.clone());
       },
       undefined,
       err => {
-        hideLoadingOverlay();
-        showError(`Ошибка загрузки: ${entry.file}`);
+        if (overlay) overlay.classList.remove('show');
+        const toast = document.getElementById('error-toast');
+        if (toast) {
+          toast.textContent = `Ошибка загрузки: ${entry.file}`;
+          toast.classList.add('show');
+          setTimeout(() => toast.classList.remove('show'), 3000);
+        }
         reject(err);
       }
     );
