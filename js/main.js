@@ -201,6 +201,11 @@ loadModelList()
   })
   .catch(err => {
     console.error('loadModelList failed:', err);
-    $('models-grid').innerHTML =
-      `<div class="models-loading"><span style="color:#ff6655;">Ошибка: ${err.message}</span></div>`;
+    // Показываем ошибку прямо на экране — для отладки
+    $('models-grid').innerHTML = `
+      <div class="models-loading" style="flex-direction:column;gap:8px;padding:20px;">
+        <span style="color:#ff6655;font-size:0.85rem;">Ошибка загрузки</span>
+        <span style="color:#ff9977;font-size:0.75rem;word-break:break-all;">${err.message}</span>
+        <span style="color:#555;font-size:0.7rem;word-break:break-all;">${err.code || ''}</span>
+      </div>`;
   });
