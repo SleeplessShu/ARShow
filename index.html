@@ -12,7 +12,7 @@
 <div id="splash">
   <div class="splash-header">
     <div class="brand-logo">
-      <img src="logo.png" alt="Sleepless Dog" width="36" height="36">
+      <img src="logo.jpg" alt="Sleepless Dog" width="36" height="36">
     </div>
     <span class="brand-name">Sleepless Dog</span>
   </div>
@@ -44,6 +44,22 @@
 
   <div class="tab-content hidden" id="tab-animation">
     <div class="stub-page" id="page-animation"></div>
+  </div>
+</div>
+
+<!-- ── Library Modal (используется внутри AR и вьювера) ── -->
+<div id="library-modal">
+  <div class="lib-header">
+    <h2>Models</h2>
+    <button class="lib-close" id="lib-close"
+            onclick="window._closeLibrary && window._closeLibrary()">✕</button>
+  </div>
+  <div class="lib-body" id="lib-body">
+    <div class="lib-empty">Загрузка...</div>
+  </div>
+  <div class="lib-footer">
+    <button class="lib-btn-view" id="lib-btn-view">Просмотр 3D</button>
+    <button class="lib-btn-ar"   id="lib-btn-ar">Запустить AR</button>
   </div>
 </div>
 
