@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AR Placer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splash">
+  <div class="logo">
+    <svg viewBox="0 0 44 44" fill="none">
+      <rect x="8" y="22" width="28" height="3" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+      <polygon points="22,6 36,22 8,22" fill="white" opacity="0.9"/>
+      <circle cx="22" cy="22" r="3" fill="white"/>
+      <line x1="22" y1="22" x2="22" y2="38" stroke="white" stroke-width="2" stroke-dasharray="3,3" opacity="0.5"/>
+    </svg>
+  </div>
+  <h1>AR Placer</h1>
+  <p class="sub">Размещайте 3D‑модели на&nbsp;реальных поверхностях через камеру вашего телефона</p>
+  <div class="compat-badge">
+    <div class="dot"></div>
+    iOS Safari · Android Chrome · WebXR
+  </div>
+  <div class="splash-actions">
+    <button class="btn-start" id="btn-start">Запустить AR</button>
+    <button class="btn-library" id="btn-open-library"
+            onclick="window._openLibrary && window._openLibrary()">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">
+        <rect x="2" y="3" width="16" height="14" rx="2"/>
+        <path d="M2 7h16"/><path d="M7 3v4"/>
+        <circle cx="10" cy="12" r="2"/>
+        <path d="M10 10V7"/>
+      </svg>
+      Открыть модель
+    </button>
+  </div>
+  <ul class="hint-list">
+    <li><span class="ic">📷</span><span>Разрешите доступ к камере когда появится запрос</span></li>
+    <li><span class="ic">🔍</span><span>Медленно водите телефоном, чтобы найти горизонтальную поверхность</span></li>
+    <li><span class="ic">👆</span><span>Нажмите на поверхность — модель прикрепится к ней</span></li>
+    <li><span class="ic">↕️</span><span>Ползунок справа — масштаб модели</span></li>
+  </ul>
+</div>
+
+<!-- Library Modal -->
+<div id="library-modal">
+  <div class="lib-header">
+    <h2>📦 Библиотека моделей</h2>
+    <button class="lib-close" id="lib-close"
+            onclick="window._closeLibrary && window._closeLibrary()">✕</button>
+  </div>
+  <div class="lib-body" id="lib-body">
+    <div class="lib-empty">Загрузка...</div>
+  </div>
+  <div class="lib-footer">
+    <button class="lib-btn-view" id="lib-btn-view">Просмотр 3D</button>
+    <button class="lib-btn-ar"   id="lib-btn-ar">Запустить AR</button>
+  </div>
+</div>
+
+<!-- No WebXR -->
+<div id="no-webxr">
+  <h2>⚠️ AR недоступен</h2>
+  <p>Ваш браузер не поддерживает WebXR Hit Testing.<br>
+     Попробуйте <strong>Safari на iPhone (iOS 16+)</strong> или <strong>Chrome на Android</strong>.</p>
+  <p><a href="https://immersiveweb.dev/#supporttable" target="_blank">Таблица совместимости →</a></p>
+  <button id="btn-fallback">Открыть 3D просмотр без AR</button>
+  <p class="fallback-mode">Режим предпросмотра без привязки к поверхности</p>
+</div>
+
+<!-- Canvas -->
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<!-- AR UI Overlay -->
+<div id="ui-overlay">
+  <div id="status-bar">Наводите на пол или стол...</div>
+
+  <div id="reticle-hint">
+    <div class="scan-ring"></div>
+    <span>Сканирование поверхности</span>
+  </div>
+
+  <div id="loading-overlay">
+    <div class="load-ring"></div>
+    <span id="loading-label">Загрузка модели...</span>
+  </div>
+
+  <div id="error-toast"></div>
+
+  <div id="scale-slider" class="visible">
+    <label>масштаб</label>
+    <input type="range" id="scaleInput" min="0.05" max="3" step="0.05" value="1" orient="vertical">
+    <span id="scale-val">1.0×</span>
+  </div>
+
+  <div id="model-dropdown-wrap">
+    <div id="model-dropdown">
+      <div class="dropdown-loading">
+        <div class="mini-spin"></div>
+        Загрузка списка...
+      </div>
+    </div>
+  </div>
+
+  <div id="toolbar">
+    <button class="tb-btn" id="btn-pick">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      Модель
+    </button>
+    <button class="tb-btn placed-only" id="btn-rotate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/>
+      </svg>
+      Вращение
+    </button>
+    <button class="tb-btn placed-only" id="btn-reset" style="color:#ff8844;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+      </svg>
+      Убрать
+    </button>
+    <button class="tb-btn" id="btn-exit" style="color:#ff5566;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+      Выйти
+    </button>
+  </div>
+</div>
+
+<!-- Three.js importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three":          "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
