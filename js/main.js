@@ -1,9 +1,11 @@
 // js/main.js — точка входа
-import { loadModelList }          from './models.js';
-import { startAR }                from './ar.js';
-import { startFallback }          from './viewer.js';
-import * as State                 from './state.js';
-import { buildDropdown }          from './ui.js';
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { loadModelList, resolveUrl, normalizeModel, loader } from './models.js';
+import { startAR }           from './ar.js';
+import { startFallback }     from './viewer.js';
+import * as State            from './state.js';
+import { buildDropdown }     from './ui.js';
 
 const $ = id => document.getElementById(id);
 
@@ -16,19 +18,17 @@ tabs.forEach(tab => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
     $(`tab-${tab.dataset.tab}`).classList.remove('hidden');
 
-    // Загружаем заглушки лениво
     const stub = tab.dataset.tab;
     if (stub !== 'models') {
-      import(`../pages/${stub}.js`).then(m => m.init($(`page-${stub}`))).catch(() => {});
+      import(`../pages/${stub}.js`)
+        .then(m => m.init($(`page-${stub}`)))
+        .catch(e => console.error('page load error:', e));
     }
   });
 });
 
 // ── Models grid ───────────────────────────────────────────
-// Переиспользуем prevewRenderers из library, но рендерим в models-grid
 const previewRenderers = [];
-let selectedCardIdx = -1;
-let arBtnEl = null; // кнопка AR в ui-overlay вьювера
 
 export function buildModelsGrid() {
   const grid = $('models-grid');
@@ -39,10 +39,8 @@ export function buildModelsGrid() {
     return;
   }
 
-  // Dispose old preview renderers
   previewRenderers.forEach(r => { try { r.dispose(); } catch(e){} });
   previewRenderers.length = 0;
-  selectedCardIdx = -1;
   grid.innerHTML = '';
 
   State.modelList.forEach((m, i) => {
@@ -57,36 +55,18 @@ export function buildModelsGrid() {
         <div class="model-card-name">${m.label || m.id}</div>
         <div class="model-card-file">${m.file}</div>
       </div>`;
-    card.addEventListener('click', () => selectModelCard(i));
+    card.addEventListener('click', () => {
+      State.setCurrentModelIdx(i);
+      startFallback();
+    });
     grid.appendChild(card);
     requestAnimationFrame(() => renderGridPreview(i, m));
   });
 
-  // Синхронизируем AR dropdown тоже
   buildDropdown();
 }
 
-function selectModelCard(idx) {
-  document.querySelectorAll('.model-card').forEach((c, i) =>
-    c.classList.toggle('selected', i === idx)
-  );
-  selectedCardIdx = idx;
-  State.setCurrentModelIdx(idx);
-
-  // Открываем вьювер сразу
-  startFallback();
-}
-
-// ── Mini preview в grid ───────────────────────────────────
-async function renderGridPreview(idx, modelEntry) {
-  // Импортируем нужное
-  const [THREE_mod, { RoomEnvironment }, { loader, resolveUrl, normalizeModel, fileEmoji }] = await Promise.all([
-    import('three'),
-    import('three/addons/environments/RoomEnvironment.js'),
-    import('./models.js'),
-  ]);
-  const THREE = THREE_mod;
-
+function renderGridPreview(idx, modelEntry) {
   const wrap = document.getElementById(`mg-wrap-${idx}`);
   if (!wrap) return;
 
@@ -106,8 +86,10 @@ async function renderGridPreview(idx, modelEntry) {
   const miniCam   = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
 
   miniScene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const d1 = new THREE.DirectionalLight(0xffffff, 1.2); d1.position.set(1,2,2); miniScene.add(d1);
-  const d2 = new THREE.DirectionalLight(0x8888ff, 0.4); d2.position.set(-1,-1,-1); miniScene.add(d2);
+  const d1 = new THREE.DirectionalLight(0xffffff, 1.2);
+  d1.position.set(1, 2, 2); miniScene.add(d1);
+  const d2 = new THREE.DirectionalLight(0x8888ff, 0.4);
+  d2.position.set(-1, -1, -1); miniScene.add(d2);
 
   const pmrem = new THREE.PMREMGenerator(miniRenderer);
   pmrem.compileEquirectangularShader();
@@ -124,8 +106,8 @@ async function renderGridPreview(idx, modelEntry) {
     clone.position.set(-ctr.x, -ctr.y, -ctr.z);
     miniScene.add(clone);
 
-    const maxD = Math.max(sz.x, sz.y, sz.z);
-    miniCam.position.set(maxD*0.8, maxD*0.6, maxD*1.1);
+    const maxD = Math.max(sz.x, sz.y, sz.z) || 1;
+    miniCam.position.set(maxD * 0.8, maxD * 0.6, maxD * 1.1);
     miniCam.lookAt(0, 0, 0);
 
     wrap.querySelector('.prev-spinner').classList.add('hidden');
@@ -144,32 +126,42 @@ async function renderGridPreview(idx, modelEntry) {
   };
 
   if (State.modelCache[modelEntry.file]) {
-    doRender(State.modelCache[modelEntry.file]); return;
+    doRender(State.modelCache[modelEntry.file]);
+    return;
   }
 
-  resolveUrl(modelEntry).then(url => {
-    loader.load(url, gltf => {
-      const root = normalizeModel(gltf.scene, miniScene.environment);
-      State.modelCache[modelEntry.file] = root;
-      doRender(root);
-    }, undefined, err => {
+  resolveUrl(modelEntry)
+    .then(url => loader.load(
+      url,
+      gltf => {
+        const root = normalizeModel(gltf.scene, miniScene.environment);
+        State.modelCache[modelEntry.file] = root;
+        doRender(root);
+      },
+      undefined,
+      err => {
+        console.error('Preview load error:', err);
+        const spin = document.getElementById(`mg-spin-${idx}`);
+        if (spin) spin.textContent = '⚠️';
+      }
+    ))
+    .catch(err => {
+      console.error('Preview URL error:', err);
       const spin = document.getElementById(`mg-spin-${idx}`);
       if (spin) spin.textContent = '⚠️';
     });
-  }).catch(() => {
-    const spin = document.getElementById(`mg-spin-${idx}`);
-    if (spin) spin.textContent = '⚠️';
-  });
 }
 
-// ── AR кнопка в overlay вьювера ───────────────────────────
+// ── AR кнопка во вьювере ──────────────────────────────────
+let arBtnEl = null;
+
 export function showViewerARButton() {
   if (!arBtnEl) {
     arBtnEl = document.createElement('button');
     arBtnEl.className = 'viewer-ar-btn';
     arBtnEl.textContent = 'Запустить AR';
     arBtnEl.addEventListener('click', () => {
-      const { exitFallback } = import('./viewer.js').then(m => {
+      import('./viewer.js').then(m => {
         m.exitFallback();
         startAR();
       });
@@ -185,13 +177,13 @@ export function hideViewerARButton() {
 
 // ── Resize ────────────────────────────────────────────────
 window.addEventListener('resize', () => {
-  if (!State.renderer) return;
+  if (!State.renderer || !State.camera) return;
   State.camera.aspect = innerWidth / innerHeight;
   State.camera.updateProjectionMatrix();
   State.renderer.setSize(innerWidth, innerHeight);
 });
 
-// ── Fallback (no-WebXR screen) ────────────────────────────
+// ── Fallback кнопка ───────────────────────────────────────
 $('btn-fallback').addEventListener('click', startFallback);
 
 // ── Init ─────────────────────────────────────────────────
@@ -201,13 +193,14 @@ $('lib-btn-view').disabled = true;
 loadModelList()
   .then(list => {
     if (!list || list.length === 0) {
-      $('models-grid').innerHTML = '<div class="models-loading"><span>Нет моделей в Storage.</span></div>';
+      $('models-grid').innerHTML =
+        '<div class="models-loading"><span>Нет моделей в Storage.</span></div>';
       return;
     }
     buildModelsGrid();
-    buildDropdown();
   })
   .catch(err => {
     console.error('loadModelList failed:', err);
-    $('models-grid').innerHTML = `<div class="models-loading"><span style="color:#ff6655;">Ошибка: ${err.message}</span></div>`;
+    $('models-grid').innerHTML =
+      `<div class="models-loading"><span style="color:#ff6655;">Ошибка: ${err.message}</span></div>`;
   });
