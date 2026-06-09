@@ -1,82 +1,65 @@
-// js/interaction.js — обработка касаний и тулбара в AR режиме
+// js/interaction.js — AR режим: касания, pinch-масштаб, тулбар
 import * as State from './state.js';
-import { setStatus, enablePlacedButtons, disablePlacedButtons } from './ui.js';
-import { placeModel, swapPlacedModel } from './ar.js';
+import { setStatus, disablePlacedButtons } from './ui.js';
+import { placeModel } from './ar.js';
 
 const $ = id => document.getElementById(id);
 
 export function setupARInteraction() {
   const overlay = $('ui-overlay');
 
-  // Тап по сцене — разместить модель
+  // Тап по сцене — разместить / переместить модель
   overlay.addEventListener('click', e => {
-    if (e.target.closest('#toolbar'))             return;
-    if (e.target.closest('#model-dropdown-wrap')) return;
-    if (e.target.closest('#scale-slider'))        return;
-    if ($('model-dropdown-wrap').classList.contains('visible')) {
-      $('model-dropdown-wrap').classList.remove('visible');
-      return;
-    }
+    if (e.target.closest('#ar-toolbar')) return;
     placeModel();
   });
 
-  // Свайп для вращения стоящей модели
+  // ── Pinch-to-zoom + rotate (1 палец = вращение, 2 = масштаб) ──
+  const touches = {};
+
   overlay.addEventListener('touchstart', e => {
-    if (e.target.closest('#toolbar'))             return;
-    if (e.target.closest('#model-dropdown-wrap')) return;
-    if (e.target.closest('#scale-slider'))        return;
-    State.setTouchStartX(e.touches[0].clientX);
+    if (e.target.closest('#ar-toolbar')) return;
+    for (const t of e.changedTouches)
+      touches[t.identifier] = { x: t.clientX, y: t.clientY };
   }, { passive: true });
 
   overlay.addEventListener('touchmove', e => {
-    if (!State.isPlaced || !State.placedObject) return;
-    if (e.target.closest('#toolbar'))             return;
-    if (e.target.closest('#model-dropdown-wrap')) return;
-    if (e.target.closest('#scale-slider'))        return;
-    const dx = e.touches[0].clientX - State.touchStartX;
-    State.placedObject.rotation.y = State.lastYaw + dx * 0.01;
-  }, { passive: true });
-
-  overlay.addEventListener('touchend', () => {
-    if (State.placedObject) State.setLastYaw(State.placedObject.rotation.y);
-  }, { passive: true });
-
-  // Ползунок масштаба
-  $('scaleInput').addEventListener('input', e => {
-    const v = parseFloat(e.target.value);
-    State.setScaleVal(v);
-    $('scale-val').textContent = v.toFixed(1) + '×';
-    if (State.placedObject) State.placedObject.scale.setScalar(v);
-  });
-
-  // Кнопка Модель — дропдаун
-  $('btn-pick').addEventListener('click', e => {
-    e.stopPropagation();
-    $('model-dropdown-wrap').classList.toggle('visible');
-  });
-
-  // Кнопка Авторотация
-  $('btn-rotate').addEventListener('click', () => {
-    State.setAutoRotate(!State.autoRotate);
-    $('btn-rotate').style.color = State.autoRotate ? '#6c47ff' : '';
-  });
-
-  // Кнопка Убрать модель
-  $('btn-reset').addEventListener('click', () => {
+    if (e.target.closest('#ar-toolbar')) return;
     if (!State.placedObject) return;
-    State.scene.remove(State.placedObject);
-    State.setPlacedObject(null);
-    State.setIsPlaced(false);
-    State.setLastYaw(0);
-    State.setAutoRotate(false);
-    $('reticle-hint').style.display = 'flex';
-    $('btn-rotate').style.color = '';
-    setStatus('Наводите на пол или стол...');
-    disablePlacedButtons();
-  });
+
+    if (e.touches.length === 1) {
+      const t    = e.touches[0];
+      const prev = touches[t.identifier];
+      if (!prev) return;
+      const dx = t.clientX - prev.x;
+      State.placedObject.rotation.y += dx * 0.012;
+      State.setLastYaw(State.placedObject.rotation.y);
+      touches[t.identifier] = { x: t.clientX, y: t.clientY };
+
+    } else if (e.touches.length === 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const p0 = touches[t0.identifier] || { x: t0.clientX, y: t0.clientY };
+      const p1 = touches[t1.identifier] || { x: t1.clientX, y: t1.clientY };
+
+      const dist     = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      const prevDist = Math.hypot(p0.x - p1.x, p0.y - p1.y);
+      if (prevDist > 0) {
+        const newScale = Math.max(0.05, Math.min(5, State.scaleVal * (dist / prevDist)));
+        State.setScaleVal(newScale);
+        State.placedObject.scale.setScalar(newScale);
+      }
+
+      touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
+      touches[t1.identifier] = { x: t1.clientX, y: t1.clientY };
+    }
+  }, { passive: true });
+
+  overlay.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) delete touches[t.identifier];
+  }, { passive: true });
 
   // Кнопка Выйти
-  $('btn-exit').addEventListener('click', () => {
+  $('ar-btn-exit').addEventListener('click', () => {
     if (State.xrSession) State.xrSession.end();
   });
 }
