@@ -10,9 +10,16 @@ import { buildDropdown }     from './ui.js';
 const $ = id => document.getElementById(id);
 
 // ── Вкладки ───────────────────────────────────────────────
+let reelsModule = null;
+
 const tabs = document.querySelectorAll('.tab');
 tabs.forEach(tab => {
   tab.addEventListener('click', () => {
+    // Остановить reels если уходим с вкладки
+    if (!tab.classList.contains('active') && reelsModule) {
+      reelsModule.pause();
+    }
+
     tabs.forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
@@ -21,7 +28,10 @@ tabs.forEach(tab => {
     const stub = tab.dataset.tab;
     if (stub !== 'models') {
       import(`../pages/${stub}.js`)
-        .then(m => m.init($(`page-${stub}`)))
+        .then(m => {
+          if (stub === 'reels') reelsModule = m;
+          m.init($(`page-${stub}`));
+        })
         .catch(e => console.error('page load error:', e));
     }
   });
