@@ -134,6 +134,24 @@
 }
 </script>
 
+<script>
+// Глобальный перехват ошибок — показывает что упало прямо на экране
+window.addEventListener('error', e => {
+  const grid = document.getElementById('models-grid');
+  if (grid) grid.innerHTML = `
+    <div style="padding:16px;color:#ff6655;font-size:0.75rem;word-break:break-all;">
+      JS Error: ${e.message}<br>${e.filename?.split('/').pop()}:${e.lineno}
+    </div>`;
+});
+window.addEventListener('unhandledrejection', e => {
+  const grid = document.getElementById('models-grid');
+  if (grid) grid.innerHTML = `
+    <div style="padding:16px;color:#ff9944;font-size:0.75rem;word-break:break-all;">
+      Promise Error: ${e.reason?.message || e.reason}
+    </div>`;
+});
+</script>
+
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
