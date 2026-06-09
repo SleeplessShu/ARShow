@@ -109,34 +109,23 @@
     </div>
   </div>
 
-  <div id="toolbar">
-    <button class="tb-btn" id="btn-pick">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-        <line x1="12" y1="22.08" x2="12" y2="12"/>
-      </svg>
-      Модель
-    </button>
-    <button class="tb-btn placed-only" id="btn-rotate">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
-        <path d="M21 3v5h-5"/>
-      </svg>
-      Вращение
-    </button>
-    <button class="tb-btn placed-only" id="btn-reset" style="color:#ff8844;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-        <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
-      </svg>
-      Убрать
-    </button>
-    <button class="tb-btn" id="btn-exit" style="color:#ff5566;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-        <path d="M18 6 6 18M6 6l12 12"/>
-      </svg>
-      Выйти
-    </button>
+  <!-- Старый тулбар скрыт (оставлен для совместимости) -->
+  <div id="toolbar" style="display:none;">
+    <button class="tb-btn" id="btn-pick"></button>
+    <button class="tb-btn" id="btn-rotate"></button>
+    <button class="tb-btn" id="btn-reset"></button>
+    <button class="tb-btn" id="btn-exit"></button>
+  </div>
+
+  <!-- Тулбар вьювера (3D просмотр) -->
+  <div id="viewer-toolbar" style="display:none;">
+    <button class="mode-btn" id="viewer-btn-ar">Запустить AR</button>
+    <button class="mode-btn mode-btn-exit" id="viewer-btn-exit">✕</button>
+  </div>
+
+  <!-- Тулбар AR -->
+  <div id="ar-toolbar" style="display:none;">
+    <button class="mode-btn mode-btn-exit" id="ar-btn-exit">✕</button>
   </div>
 </div>
 
