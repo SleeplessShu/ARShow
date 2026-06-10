@@ -13,6 +13,12 @@ export async function startFallback() {
   $('splash').style.display = 'none';
   $('no-webxr').classList.remove('show');
 
+  // Останавливаем превью перед запуском вьювера
+  try {
+    const main = await import('./main.js');
+    main.stopAllPreviews();
+  } catch(e) {}
+
   const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
@@ -88,6 +94,19 @@ async function swapViewerModel() {
 }
 
 export function exitFallback() {
+  if (State.scene) {
+    State.scene.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+      }
+    });
+    if (State.scene.environment) {
+      State.scene.environment.dispose();
+      State.scene.environment = null;
+    }
+  }
   if (State.renderer) {
     State.renderer.setAnimationLoop(null);
     State.renderer.dispose();
