@@ -43,6 +43,13 @@ export async function startAR() {
   log('startAR called');
   $('splash').style.display = 'none';
 
+  // Останавливаем все превью-рендереры перед запуском AR
+  try {
+    const main = await import('./main.js');
+    main.stopAllPreviews();
+    log('previews stopped');
+  } catch(e) { log('stopAllPreviews error:', e.message); }
+
   if (!navigator.xr) { log('ERROR: navigator.xr undefined'); showNoXR(); return; }
   log('navigator.xr OK');
 
@@ -207,6 +214,30 @@ function onFrame(time, frame) {
 const _emptyArr = [];
 
 function onAREnd() {
+  // Освобождаем AR сцену и все Three.js ресурсы
+  if (State.scene) {
+    State.scene.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (m.map) m.map.dispose();
+          if (m.envMap) m.envMap.dispose();
+          m.dispose();
+        });
+      }
+    });
+    if (State.scene.environment) {
+      State.scene.environment.dispose();
+      State.scene.environment = null;
+    }
+  }
+  if (State.renderer) {
+    State.renderer.setAnimationLoop(null);
+    State.renderer.dispose();
+    State.setRenderer(null);
+  }
+
   $('canvas-wrap').classList.remove('active');
   $('ui-overlay').classList.remove('active');
   $('ar-toolbar').style.display = 'none';
@@ -214,10 +245,14 @@ function onAREnd() {
   $('scale-slider').classList.add('visible');
   $('splash').style.display = 'flex';
   State.setIsPlaced(false);
+  State.setScene(null);
   State.setPlacedObject(null);
+  State.setReticle(null);
   State.setHitTestSource(null);
   State.setLastYaw(0);
   State.setAutoRotate(false);
+  _lastHadHit = null;
+  _frameCount = 0;
 }
 
 export async function placeModel() {
