@@ -36,51 +36,50 @@ export async function init(container) {
     style.id = 'reels-style';
     style.textContent = `
       #tab-reels {
-        padding: 0;
-        overflow: hidden;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        padding: 0 !important;
+        overflow: hidden !important;
         background: #0e0e0e;
+        display: flex;
+        flex-direction: column;
       }
 
       #reels-wrap {
-        /* Занимаем всю высоту вкладки, центрируем слайды */
+        flex: 1;
         width: 100%;
-        height: 100%;
         position: relative;
         overflow: hidden;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: stretch;
       }
 
       #reels-track {
         display: flex;
-        height: 100%;
+        flex: 1;
+        align-items: stretch;
         transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
         will-change: transform;
       }
 
       .reel-slide {
         flex-shrink: 0;
-        height: 100%;
         position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
         background: #000;
+        /* высота берётся от flex-родителя через align-items:stretch */
       }
 
       .reel-slide video {
         /* Вписываем по высоте — весь ролик виден */
         width: auto;
         height: 100%;
+        max-height: 100%;
         max-width: 100%;
         object-fit: contain;
         display: block;
         background: #000;
+        flex-shrink: 0;
       }
 
       /* Буферизация */
@@ -200,13 +199,17 @@ export async function init(container) {
   let isTransitioning = false;
 
   // Ширина одного слайда = ширина контейнера
-  const slideW = () => track.parentElement.clientWidth;
+  // clientWidth может быть 0 если layout ещё не посчитан — fallback на innerWidth
+  const slideW = () => {
+    const w = track.parentElement?.clientWidth || container.clientWidth || window.innerWidth;
+    return w || window.innerWidth;
+  };
 
-  // Создать слайды
+  // Создать слайды — ширину ставим после первого layout
   const slides = extended.map(url => {
     const slide = document.createElement('div');
     slide.className = 'reel-slide';
-    slide.style.width = slideW() + 'px';
+    slide.style.width = '100vw'; // временная ширина до layout
 
     const video = document.createElement('video');
     video.src         = url;
@@ -360,11 +363,19 @@ export async function init(container) {
   window.addEventListener('resize', onResize);
   container._reelsResizeHandler = onResize;
 
-  // ── Старт ─────────────────────────────────────────────
-  goTo(current, false);
-  loading.classList.add('hidden');
-  updateDots();
-  syncVideo();
+  // ── Старт — ждём layout перед позиционированием ─────
+  const doStart = () => {
+    // Пересчитываем реальную ширину после layout
+    const w = slideW();
+    slides.forEach(s => { s.style.width = w + 'px'; });
+    goTo(current, false);
+    loading.classList.add('hidden');
+    updateDots();
+    syncVideo();
+  };
+
+  // Два rAF гарантируют что браузер посчитал layout
+  requestAnimationFrame(() => requestAnimationFrame(doStart));
 }
 
 function iconSound(muted) {
