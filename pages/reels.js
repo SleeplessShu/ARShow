@@ -2,11 +2,12 @@
 import { storage, ref, listAll, getDownloadURL } from '../js/firebase.js';
 
 let initialized = false;
-let activeVideo = null; // для остановки при смене вкладки
 
 export function pause() {
-  if (activeVideo && !activeVideo.paused) activeVideo.pause();
+  if (_activeVideo && !_activeVideo.paused) _activeVideo.pause();
 }
+
+let _activeVideo = null;
 
 export async function init(container) {
   if (initialized) return;
@@ -16,6 +17,8 @@ export async function init(container) {
     <div id="reels-wrap">
       <div id="reels-track"></div>
       <div id="reels-dots"></div>
+      <div id="reels-prev" class="reels-arrow">&#8249;</div>
+      <div id="reels-next" class="reels-arrow">&#8250;</div>
       <div id="reels-loading">
         <div class="mini-spin"></div>
         <span>Загрузка...</span>
@@ -25,34 +28,62 @@ export async function init(container) {
   const track   = container.querySelector('#reels-track');
   const dots    = container.querySelector('#reels-dots');
   const loading = container.querySelector('#reels-loading');
+  const btnPrev = container.querySelector('#reels-prev');
+  const btnNext = container.querySelector('#reels-next');
 
   if (!document.getElementById('reels-style')) {
     const style = document.createElement('style');
     style.id = 'reels-style';
     style.textContent = `
-      #tab-reels { padding: 0; overflow: hidden; position: relative; }
+      #tab-reels {
+        padding: 0;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0e0e0e;
+      }
 
       #reels-wrap {
-        width: 100%; height: 100%;
-        position: relative; overflow: hidden;
-        display: flex; flex-direction: column;
-      }
-      #reels-track {
-        flex: 1; display: flex;
-        transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-        will-change: transform; min-height: 0;
-      }
-      .reel-slide {
-        flex-shrink: 0; width: 100%; height: 100%;
-        position: relative; background: #000;
-        display: flex; align-items: center; justify-content: center;
-      }
-      .reel-slide video {
-        width: 100%; height: 100%;
-        object-fit: cover; display: block;
+        /* Занимаем всю высоту вкладки, центрируем слайды */
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
-      /* Буферизация — спиннер поверх видео */
+      #reels-track {
+        display: flex;
+        height: 100%;
+        transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        will-change: transform;
+      }
+
+      .reel-slide {
+        flex-shrink: 0;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+      }
+
+      .reel-slide video {
+        /* Вписываем по высоте — весь ролик виден */
+        width: auto;
+        height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        display: block;
+        background: #000;
+      }
+
+      /* Буферизация */
       .reel-buf {
         position: absolute; inset: 0;
         display: flex; align-items: center; justify-content: center;
@@ -70,17 +101,14 @@ export async function init(container) {
       }
       @keyframes reel-spin { to { transform: rotate(360deg); } }
 
-      /* Иконка play/pause в центре — мигает при тапе */
+      /* Иконка play/pause */
       .reel-tap-icon {
         position: absolute; inset: 0;
         display: flex; align-items: center; justify-content: center;
         pointer-events: none; opacity: 0;
         transition: opacity 0.15s;
       }
-      .reel-tap-icon svg {
-        width: 64px; height: 64px;
-        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
-      }
+      .reel-tap-icon svg { width: 64px; height: 64px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)); }
       .reel-tap-icon.flash { opacity: 1; }
 
       /* Кнопка звука */
@@ -96,6 +124,33 @@ export async function init(container) {
       }
       #reels-mute svg { width: 20px; height: 20px; }
 
+      /* Стрелки (только десктоп) */
+      .reels-arrow {
+        position: absolute;
+        top: 50%; transform: translateY(-50%);
+        width: 44px; height: 44px;
+        background: rgba(0,0,0,0.45);
+        backdrop-filter: blur(8px);
+        border-radius: 50%;
+        display: none;           /* скрыты по умолчанию */
+        align-items: center; justify-content: center;
+        font-size: 28px; line-height: 1;
+        color: rgba(255,255,255,0.8);
+        cursor: pointer;
+        user-select: none;
+        z-index: 4;
+        transition: background 0.15s;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .reels-arrow:hover { background: rgba(0,0,0,0.7); }
+      #reels-prev { left: 12px; }
+      #reels-next { right: 12px; }
+
+      /* Показываем стрелки на десктопе */
+      @media (pointer: fine) {
+        .reels-arrow { display: flex; }
+      }
+
       /* Точки */
       #reels-dots {
         position: absolute; bottom: 12px; left: 50%;
@@ -109,19 +164,19 @@ export async function init(container) {
       }
       .reel-dot.active { background: #d0d0d0; transform: scale(1.3); }
 
-      /* Начальный оверлей загрузки */
+      /* Начальный оверлей */
       #reels-loading {
         position: absolute; inset: 0;
         display: flex; align-items: center; justify-content: center;
         gap: 10px; color: #555; font-size: 0.88rem;
-        background: #171717; z-index: 3;
+        background: #0e0e0e; z-index: 3;
       }
       #reels-loading.hidden { display: none; }
     `;
     document.head.appendChild(style);
   }
 
-  // Загрузить список
+  // ── Загрузка списка ───────────────────────────────────
   let urls = [];
   try {
     const reelsRef = ref(storage, 'reels');
@@ -137,17 +192,21 @@ export async function init(container) {
     return;
   }
 
-  // Клоны для бесконечности: [last, ...all, first]
+  // ── Бесконечная карусель [last, ...all, first] ────────
   const allUrls  = [...urls];
   const extended = [allUrls[allUrls.length - 1], ...allUrls, allUrls[0]];
   let current = 1;
   let isMuted = false;
   let isTransitioning = false;
 
+  // Ширина одного слайда = ширина контейнера
+  const slideW = () => track.parentElement.clientWidth;
+
   // Создать слайды
-  extended.forEach(url => {
+  const slides = extended.map(url => {
     const slide = document.createElement('div');
     slide.className = 'reel-slide';
+    slide.style.width = slideW() + 'px';
 
     const video = document.createElement('video');
     video.src         = url;
@@ -158,24 +217,22 @@ export async function init(container) {
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
 
-    // Буфер-спиннер
     const buf = document.createElement('div');
     buf.className = 'reel-buf';
     buf.innerHTML = '<div class="reel-buf-ring"></div>';
 
-    // Иконка тапа
     const tapIcon = document.createElement('div');
     tapIcon.className = 'reel-tap-icon';
 
-    // Показать спиннер пока грузится
-    video.addEventListener('waiting',  () => buf.classList.add('show'));
-    video.addEventListener('playing',  () => buf.classList.remove('show'));
-    video.addEventListener('canplay',  () => buf.classList.remove('show'));
+    video.addEventListener('waiting', () => buf.classList.add('show'));
+    video.addEventListener('playing', () => buf.classList.remove('show'));
+    video.addEventListener('canplay', () => buf.classList.remove('show'));
 
     slide.appendChild(video);
     slide.appendChild(buf);
     slide.appendChild(tapIcon);
     track.appendChild(slide);
+    return slide;
   });
 
   // Кнопка звука
@@ -191,15 +248,15 @@ export async function init(container) {
     dots.appendChild(dot);
   });
 
-  const slides    = track.querySelectorAll('.reel-slide');
   const dotEls    = dots.querySelectorAll('.reel-dot');
   const realCount = allUrls.length;
 
+  // ── Навигация ──────────────────────────────────────────
   const goTo = (idx, animate) => {
     track.style.transition = animate
       ? 'transform 0.35s cubic-bezier(0.4,0,0.2,1)'
       : 'none';
-    track.style.transform = `translateX(-${idx * 100}%)`;
+    track.style.transform = `translateX(-${idx * slideW()}px)`;
   };
 
   const updateDots = () => {
@@ -212,11 +269,9 @@ export async function init(container) {
       const v = slide.querySelector('video');
       v.muted = isMuted;
       if (i === current) {
-        activeVideo = v;
-        buf_show(slide, true);
+        _activeVideo = v;
         v.play().catch(() => {
-          isMuted = true;
-          v.muted = true;
+          isMuted = true; v.muted = true;
           muteBtn.innerHTML = iconSound(true);
           v.play();
         });
@@ -226,52 +281,14 @@ export async function init(container) {
     });
   };
 
-  const buf_show = (slide, loading) => {
-    const v = slide.querySelector('video');
-    const b = slide.querySelector('.reel-buf');
-    if (loading && v.readyState < 3) b.classList.add('show');
-  };
-
-  // Иконка play/pause анимация
-  const flashIcon = (slide, playing) => {
-    const icon = slide.querySelector('.reel-tap-icon');
-    icon.innerHTML = playing
-      ? `<svg viewBox="0 0 64 64" fill="none">
-           <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.4)"/>
-           <rect x="22" y="18" width="8" height="28" rx="2" fill="white"/>
-           <rect x="34" y="18" width="8" height="28" rx="2" fill="white"/>
-         </svg>`
-      : `<svg viewBox="0 0 64 64" fill="none">
-           <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.4)"/>
-           <path d="M24 18 L48 32 L24 46 Z" fill="white"/>
-         </svg>`;
-    icon.classList.add('flash');
-    setTimeout(() => icon.classList.remove('flash'), 400);
-  };
-
-  // Тап — play/pause
-  track.addEventListener('click', e => {
+  const navigate = (dir) => {
     if (isTransitioning) return;
-    const slide = slides[current];
-    const v     = slide.querySelector('video');
-    if (v.paused) {
-      v.play();
-      flashIcon(slide, false); // показываем play (было пауза, теперь играет)
-    } else {
-      v.pause();
-      flashIcon(slide, true);  // показываем паузу
-    }
-  });
+    isTransitioning = true;
+    current += dir;
+    goTo(current, true);
+    syncVideo();
+  };
 
-  // Кнопка звука
-  muteBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    isMuted = !isMuted;
-    muteBtn.innerHTML = iconSound(isMuted);
-    slides.forEach(s => { s.querySelector('video').muted = isMuted; });
-  });
-
-  // Бесконечный loop после transition
   track.addEventListener('transitionend', () => {
     isTransitioning = false;
     if (current === 0) {
@@ -282,25 +299,68 @@ export async function init(container) {
     updateDots();
   });
 
-  // Свайп
+  // ── Тап — play/pause ──────────────────────────────────
+  const flashIcon = (slide, isPaused) => {
+    const icon = slide.querySelector('.reel-tap-icon');
+    icon.innerHTML = isPaused
+      ? `<svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.4)"/><path d="M24 18 L48 32 L24 46 Z" fill="white"/></svg>`
+      : `<svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.4)"/><rect x="22" y="18" width="8" height="28" rx="2" fill="white"/><rect x="34" y="18" width="8" height="28" rx="2" fill="white"/></svg>`;
+    icon.classList.add('flash');
+    setTimeout(() => icon.classList.remove('flash'), 400);
+  };
+
+  track.addEventListener('click', e => {
+    if (isTransitioning) return;
+    const slide = slides[current];
+    const v = slide.querySelector('video');
+    if (v.paused) { v.play(); flashIcon(slide, false); }
+    else          { v.pause(); flashIcon(slide, true); }
+  });
+
+  // ── Кнопка звука ──────────────────────────────────────
+  muteBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    isMuted = !isMuted;
+    muteBtn.innerHTML = iconSound(isMuted);
+    slides.forEach(s => { s.querySelector('video').muted = isMuted; });
+  });
+
+  // ── Стрелки (десктоп) ─────────────────────────────────
+  btnPrev.addEventListener('click', e => { e.stopPropagation(); navigate(-1); });
+  btnNext.addEventListener('click', e => { e.stopPropagation(); navigate(1);  });
+
+  // ── Свайп (мобайл) ────────────────────────────────────
   let tx = 0, ty = 0;
   track.addEventListener('touchstart', e => {
     tx = e.touches[0].clientX;
     ty = e.touches[0].clientY;
   }, { passive: true });
-
   track.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - tx;
     const dy = e.changedTouches[0].clientY - ty;
     if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx)) return;
-    if (isTransitioning) return;
-    isTransitioning = true;
-    current += dx < 0 ? 1 : -1;
-    goTo(current, true);
-    syncVideo();
+    navigate(dx < 0 ? 1 : -1);
   }, { passive: true });
 
-  // Старт
+  // ── Клавиши (десктоп) ─────────────────────────────────
+  const onKey = e => {
+    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === 'ArrowLeft')  navigate(-1);
+  };
+  document.addEventListener('keydown', onKey);
+  // Сохраняем для удаления при смене вкладки
+  container._reelsKeyHandler = onKey;
+
+  // ── Resize — пересчитать ширину слайдов ───────────────
+  const onResize = () => {
+    const w = slideW();
+    slides.forEach(s => { s.style.width = w + 'px'; });
+    goTo(current, false);
+  };
+  window.addEventListener('resize', onResize);
+  container._reelsResizeHandler = onResize;
+
+  // ── Старт ─────────────────────────────────────────────
   goTo(current, false);
   loading.classList.add('hidden');
   updateDots();
@@ -311,8 +371,7 @@ function iconSound(muted) {
   return muted
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-        <line x1="23" y1="9" x2="17" y2="15"/>
-        <line x1="17" y1="9" x2="23" y2="15"/>
+        <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
        </svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
