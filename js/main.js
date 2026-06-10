@@ -18,6 +18,9 @@ tabs.forEach(tab => {
     // Остановить reels если уходим с вкладки
     if (!tab.classList.contains('active') && reelsModule) {
       reelsModule.pause();
+      const c = document.getElementById('page-reels');
+      if (c?._reelsKeyHandler)    document.removeEventListener('keydown', c._reelsKeyHandler);
+      if (c?._reelsResizeHandler) window.removeEventListener('resize',   c._reelsResizeHandler);
     }
 
     tabs.forEach(t => t.classList.remove('active'));
