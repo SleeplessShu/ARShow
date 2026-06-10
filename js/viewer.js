@@ -22,12 +22,23 @@ export async function startFallback() {
   const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setClearColor(0xf0ede8);
-  renderer.shadowMap.enabled = false;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   State.setRenderer(renderer);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf0ede8);
+  // Градиентный фон через canvas-текстуру
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = 2; bgCanvas.height = 512;
+  const bgCtx = bgCanvas.getContext('2d');
+  const grad = bgCtx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0,   '#e8e4f0'); // сверху — холодный светло-лавандовый
+  grad.addColorStop(0.5, '#f5f2ec'); // середина — тёплый нейтральный
+  grad.addColorStop(1,   '#ede8e0'); // снизу — тёплый бежевый
+  bgCtx.fillStyle = grad;
+  bgCtx.fillRect(0, 0, 2, 512);
+  const bgTexture = new THREE.CanvasTexture(bgCanvas);
+  scene.background = bgTexture;
   State.setScene(scene);
 
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
@@ -41,11 +52,29 @@ export async function startFallback() {
   pmrem.dispose();
 
   // Светлое студийное освещение
-  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-  const key = new THREE.DirectionalLight(0xfff5e0, 1.0);
-  key.position.set(3, 5, 3); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xe0eeff, 0.4);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+  const key = new THREE.DirectionalLight(0xfff5e0, 1.2);
+  key.position.set(3, 5, 3);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 0.1;
+  key.shadow.camera.far  = 20;
+  key.shadow.camera.left = key.shadow.camera.bottom = -1;
+  key.shadow.camera.right = key.shadow.camera.top   =  1;
+  key.shadow.bias = -0.001;
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xe0eeff, 0.6);
   rim.position.set(-2, 2, -3); scene.add(rim);
+
+  // Плоскость для тени
+  const shadowPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(4, 4),
+    new THREE.ShadowMaterial({ opacity: 0.18 })
+  );
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.position.y = -0.001;
+  shadowPlane.receiveShadow = true;
+  scene.add(shadowPlane);
 
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
@@ -105,6 +134,7 @@ export function exitFallback() {
         mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
       }
     });
+    if (State.scene.background?.isTexture) State.scene.background.dispose();
     if (State.scene.environment) {
       State.scene.environment.dispose();
       State.scene.environment = null;
