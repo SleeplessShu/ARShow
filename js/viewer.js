@@ -22,7 +22,7 @@ export async function startFallback() {
   const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   State.setRenderer(renderer);
 
@@ -52,8 +52,8 @@ export async function startFallback() {
   pmrem.dispose();
 
   // Светлое студийное освещение
-  scene.add(new THREE.AmbientLight(0xffffff, 1.6));
-  const key = new THREE.DirectionalLight(0xfff5e0, 1.4);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+  const key = new THREE.DirectionalLight(0xfff5e0, 1.3);
   key.position.set(3, 5, 3);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
