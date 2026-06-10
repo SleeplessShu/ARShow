@@ -10,7 +10,8 @@ export function setupARInteraction() {
 
   // Тап по сцене — разместить / переместить модель
   overlay.addEventListener('click', e => {
-    if (e.target.closest('#ar-toolbar')) return;
+    console.log('[AR] tap on overlay, target:', e.target.id || e.target.className);
+    if (e.target.closest('#ar-toolbar')) { console.log('[AR] tap on toolbar - skip'); return; }
     placeModel();
   });
 
