@@ -1,68 +1,75 @@
-// js/interaction.js — AR режим: касания, pinch-масштаб, тулбар
+// js/interaction.js — AR режим: тап, свайп, pinch
 import * as State from './state.js';
-import { setStatus, disablePlacedButtons } from './ui.js';
 import { placeModel } from './ar.js';
 
-const $ = id => document.getElementById(id);
-
 export function setupARInteraction() {
-  const overlay = $('ui-overlay');
+  // DOM события в WebXR dom-overlay могут не работать —
+  // используем document level listeners которые работают всегда
+  let touches = {};
+  let tapStartX = 0, tapStartY = 0;
+  let tapStartTime = 0;
+  const TAP_MAX_MOVE = 10; // px
+  const TAP_MAX_TIME = 300; // ms
 
-  // Тап по сцене — разместить / переместить модель
-  overlay.addEventListener('click', e => {
-    console.log('[AR] tap on overlay, target:', e.target.id || e.target.className);
-    if (e.target.closest('#ar-toolbar')) { console.log('[AR] tap on toolbar - skip'); return; }
-    placeModel();
-  });
-
-  // ── Pinch-to-zoom + rotate (1 палец = вращение, 2 = масштаб) ──
-  const touches = {};
-
-  overlay.addEventListener('touchstart', e => {
-    if (e.target.closest('#ar-toolbar')) return;
+  document.addEventListener('touchstart', e => {
     for (const t of e.changedTouches)
-      touches[t.identifier] = { x: t.clientX, y: t.clientY };
+      touches[t.identifier] = { x: t.clientX, y: t.clientY, time: Date.now() };
+
+    if (e.touches.length === 1) {
+      tapStartX = e.touches[0].clientX;
+      tapStartY = e.touches[0].clientY;
+      tapStartTime = Date.now();
+    }
   }, { passive: true });
 
-  overlay.addEventListener('touchmove', e => {
-    if (e.target.closest('#ar-toolbar')) return;
+  document.addEventListener('touchmove', e => {
     if (!State.placedObject) return;
 
     if (e.touches.length === 1) {
+      // Один палец — вращение по горизонтали
       const t    = e.touches[0];
       const prev = touches[t.identifier];
       if (!prev) return;
       const dx = t.clientX - prev.x;
       State.placedObject.rotation.y += dx * 0.012;
       State.setLastYaw(State.placedObject.rotation.y);
-      touches[t.identifier] = { x: t.clientX, y: t.clientY };
+      touches[t.identifier] = { x: t.clientX, y: t.clientY, time: Date.now() };
 
     } else if (e.touches.length === 2) {
+      // Два пальца — pinch масштаб
       const t0 = e.touches[0], t1 = e.touches[1];
-      const p0 = touches[t0.identifier] || { x: t0.clientX, y: t0.clientY };
-      const p1 = touches[t1.identifier] || { x: t1.clientX, y: t1.clientY };
+      const p0 = touches[t0.identifier];
+      const p1 = touches[t1.identifier];
+      if (!p0 || !p1) return;
 
       const dist     = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
       const prevDist = Math.hypot(p0.x - p1.x, p0.y - p1.y);
+
       if (prevDist > 0) {
-        const factor   = dist / prevDist;
-        const curScale = State.placedObject.scale.x; // берём текущий реальный масштаб
-        const newScale = Math.max(0.01, Math.min(2, curScale * factor));
+        const cur      = State.placedObject.scale.x;
+        const newScale = Math.max(0.01, Math.min(2.0, cur * (dist / prevDist)));
         State.placedObject.scale.setScalar(newScale);
         State.setScaleVal(newScale);
       }
 
-      touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
-      touches[t1.identifier] = { x: t1.clientX, y: t1.clientY };
+      touches[t0.identifier] = { x: t0.clientX, y: t0.clientY, time: Date.now() };
+      touches[t1.identifier] = { x: t1.clientX, y: t1.clientY, time: Date.now() };
     }
   }, { passive: true });
 
-  overlay.addEventListener('touchend', e => {
+  document.addEventListener('touchend', e => {
     for (const t of e.changedTouches) delete touches[t.identifier];
   }, { passive: true });
 
   // Кнопка Выйти
-  $('ar-btn-exit').addEventListener('click', () => {
-    if (State.xrSession) State.xrSession.end();
-  });
+  const exitBtn = document.getElementById('ar-btn-exit');
+  if (exitBtn) {
+    exitBtn.addEventListener('click', () => {
+      if (State.xrSession) State.xrSession.end();
+    });
+    exitBtn.addEventListener('touchend', e => {
+      e.stopPropagation();
+      if (State.xrSession) State.xrSession.end();
+    }, { passive: true });
+  }
 }
