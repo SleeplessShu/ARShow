@@ -43,7 +43,7 @@ export async function startFallback() {
 
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
   camera.position.set(0, 0.5, 0.8);
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(0, 0.25, 0);
   State.setCamera(camera);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
