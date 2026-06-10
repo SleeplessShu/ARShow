@@ -44,9 +44,11 @@ export function setupARInteraction() {
       const dist     = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
       const prevDist = Math.hypot(p0.x - p1.x, p0.y - p1.y);
       if (prevDist > 0) {
-        const newScale = Math.max(0.05, Math.min(5, State.scaleVal * (dist / prevDist)));
-        State.setScaleVal(newScale);
+        const factor   = dist / prevDist;
+        const curScale = State.placedObject.scale.x; // берём текущий реальный масштаб
+        const newScale = Math.max(0.01, Math.min(2, curScale * factor));
         State.placedObject.scale.setScalar(newScale);
+        State.setScaleVal(newScale);
       }
 
       touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
