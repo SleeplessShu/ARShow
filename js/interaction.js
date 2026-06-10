@@ -63,13 +63,15 @@ export function setupARInteraction() {
 
   // Кнопка Выйти
   const exitBtn = document.getElementById('ar-btn-exit');
+  const endSession = () => {
+    const s = State.xrSession;
+    if (s) s.end().catch(() => {});
+  };
   if (exitBtn) {
-    exitBtn.addEventListener('click', () => {
-      if (State.xrSession) State.xrSession.end();
-    });
+    exitBtn.addEventListener('click', endSession);
     exitBtn.addEventListener('touchend', e => {
       e.stopPropagation();
-      if (State.xrSession) State.xrSession.end();
+      endSession();
     }, { passive: true });
   }
 }
