@@ -52,7 +52,7 @@ export async function startFallback() {
   pmrem.dispose();
 
   // Светлое студийное освещение
-  scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+  scene.add(new THREE.AmbientLight(0xffffff, 1.0));
   const key = new THREE.DirectionalLight(0xfff5e0, 1.3);
   key.position.set(3, 5, 3);
   key.castShadow = true;
@@ -65,16 +65,6 @@ export async function startFallback() {
   scene.add(key);
   const rim = new THREE.DirectionalLight(0xe0eeff, 0.8);
   rim.position.set(-2, 2, -3); scene.add(rim);
-
-  // Плоскость для тени
-  const shadowPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(4, 4),
-    new THREE.ShadowMaterial({ opacity: 0.18 })
-  );
-  shadowPlane.rotation.x = -Math.PI / 2;
-  shadowPlane.position.y = -0.001;
-  shadowPlane.receiveShadow = true;
-  scene.add(shadowPlane);
 
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
