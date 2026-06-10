@@ -38,7 +38,17 @@ tabs.forEach(tab => {
 });
 
 // ── Models grid ───────────────────────────────────────────
-const previewRenderers = [];
+// Храним animId и renderer отдельно для надёжного освобождения
+const _previews = []; // { animId, renderer, envTexture }
+
+export function stopAllPreviews() {
+  for (const p of _previews) {
+    try { cancelAnimationFrame(p.animId); } catch(e) {}
+    try { if (p.envTexture) p.envTexture.dispose(); } catch(e) {}
+    try { p.renderer.dispose(); } catch(e) {}
+  }
+  _previews.length = 0;
+}
 
 export function buildModelsGrid() {
   const grid = $('models-grid');
@@ -49,8 +59,7 @@ export function buildModelsGrid() {
     return;
   }
 
-  previewRenderers.forEach(r => { try { r.dispose(); } catch(e){} });
-  previewRenderers.length = 0;
+  stopAllPreviews();
   grid.innerHTML = '';
 
   State.modelList.forEach((m, i) => {
@@ -87,24 +96,28 @@ function renderGridPreview(idx, modelEntry) {
   cvs.style.width  = size + 'px';
   cvs.style.height = size + 'px';
 
-  const miniRenderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true, alpha: true });
-  miniRenderer.setPixelRatio(devicePixelRatio);
+  // Ограничиваем pixelRatio для превью — не нужна полная чёткость
+  const miniRenderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: false, alpha: true });
+  miniRenderer.setPixelRatio(Math.min(devicePixelRatio, 1));
   miniRenderer.setSize(size, size);
-  previewRenderers.push(miniRenderer);
 
   const miniScene = new THREE.Scene();
   const miniCam   = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
 
-  miniScene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const d1 = new THREE.DirectionalLight(0xffffff, 1.2);
+  miniScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const d1 = new THREE.DirectionalLight(0xffffff, 1.0);
   d1.position.set(1, 2, 2); miniScene.add(d1);
-  const d2 = new THREE.DirectionalLight(0x8888ff, 0.4);
-  d2.position.set(-1, -1, -1); miniScene.add(d2);
 
+  // Создаём envTexture и сохраняем ссылку для последующего dispose
   const pmrem = new THREE.PMREMGenerator(miniRenderer);
   pmrem.compileEquirectangularShader();
-  miniScene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  const envTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  miniScene.environment = envTexture;
   pmrem.dispose();
+
+  // Регистрируем для глобального управления
+  const previewEntry = { animId: 0, renderer: miniRenderer, envTexture };
+  _previews.push(previewEntry);
 
   const doRender = root => {
     const clone = root.clone();
@@ -123,16 +136,14 @@ function renderGridPreview(idx, modelEntry) {
     wrap.querySelector('.prev-spinner').classList.add('hidden');
     wrap.appendChild(cvs);
 
-    let yaw = 0, animId;
+    let yaw = 0;
     const animate = () => {
-      animId = requestAnimationFrame(animate);
+      previewEntry.animId = requestAnimationFrame(animate);
       yaw += 0.015;
       clone.rotation.y = yaw;
       miniRenderer.render(miniScene, miniCam);
     };
     animate();
-    const orig = miniRenderer.dispose.bind(miniRenderer);
-    miniRenderer.dispose = () => { cancelAnimationFrame(animId); orig(); };
   };
 
   if (State.modelCache[modelEntry.file]) {
