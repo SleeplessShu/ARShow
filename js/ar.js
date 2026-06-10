@@ -92,24 +92,23 @@ export async function startAR() {
   State.setReticle(reticle);
 
   $('canvas-wrap').classList.add('active');
+  // ui-overlay должен быть виден ДО requestSession для dom-overlay
   $('ui-overlay').classList.add('active');
-  // Скрываем старый тулбар и ползунок
   $('toolbar').style.display    = 'none';
   $('scale-slider').classList.remove('visible');
-  // Показываем AR тулбар
   $('ar-toolbar').style.display = 'flex';
-  // Сброс статуса
   setStatus('Наводите на пол или стол...');
   $('reticle-hint').style.display = 'flex';
 
+  log('requesting XR session...');
   const xrSession = await navigator.xr.requestSession('immersive-ar', {
     requiredFeatures: ['hit-test'],
     optionalFeatures: ['dom-overlay'],
-    domOverlay: { root: $('ui-overlay') },
+    domOverlay: { root: document.getElementById('ui-overlay') },
   }).catch(e => { log('requestSession error:', e.message); return null; });
 
   if (!xrSession) { log('ERROR: no xrSession'); showNoXR(); return; }
-  log('XR session created');
+  log('XR session created, domOverlayState:', JSON.stringify(xrSession.domOverlayState));
   State.setXrSession(xrSession);
 
   renderer.xr.setReferenceSpaceType('local');
@@ -126,6 +125,13 @@ export async function startAR() {
   State.setHitTestSource(hitSource);
 
   xrSession.addEventListener('end', onAREnd);
+
+  // XR select — нативное событие тапа, работает даже без dom-overlay
+  xrSession.addEventListener('select', () => {
+    log('XR select event fired');
+    placeModel();
+  });
+
   renderer.setAnimationLoop(onFrame);
   log('animation loop started');
   setupARInteraction();
