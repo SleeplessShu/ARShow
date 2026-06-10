@@ -86,6 +86,8 @@ export async function startAR() {
 
 function makeReticle() {
   const g = new THREE.Group();
+  // Отключаем автообновление матрицы — управляем вручную через hit-test
+  g.matrixAutoUpdate = false;
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.06, 0.075, 32),
     new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
@@ -155,10 +157,23 @@ export async function placeModel() {
   try { obj = await loadModel(State.currentModelIdx); } catch (e) { return; }
   if (!obj) return;
 
+  // Сбрасываем смещение которое добавил normalizeModel (bottom at Y=0)
+  // В AR позиционируем относительно hit-test точки
+  obj.position.set(0, 0, 0);
+  obj.rotation.set(0, 0, 0);
+
+  // Вписываем в 0.3м для AR (реальный масштаб)
+  const box    = new THREE.Box3().setFromObject(obj);
+  const size   = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const arScale = maxDim > 0 ? (0.3 / maxDim) * State.scaleVal : State.scaleVal;
+  obj.scale.setScalar(arScale);
+
+  // Размещаем на поверхности — берём позицию и ориентацию от прицела
   obj.position.copy(State.reticle.position);
   obj.quaternion.copy(State.reticle.quaternion);
-  obj.scale.setScalar(State.scaleVal);
-  obj.rotation.y = State.lastYaw;
+  obj.rotation.y += State.lastYaw;
+
   State.scene.add(obj);
   State.setPlacedObject(obj);
   State.setIsPlaced(true);
@@ -168,11 +183,11 @@ export async function placeModel() {
 
   // Bounce анимация
   let t = 0;
-  const base = State.scaleVal;
+  const base = arScale;
   const bounce = () => {
     t += 0.08;
     if (t >= 1) { if (State.placedObject) State.placedObject.scale.setScalar(base); return; }
-    if (State.placedObject) State.placedObject.scale.setScalar(base * (1 + Math.sin(t * Math.PI) * 0.25));
+    if (State.placedObject) State.placedObject.scale.setScalar(base * (1 + Math.sin(t * Math.PI) * 0.3));
     requestAnimationFrame(bounce);
   };
   bounce();
