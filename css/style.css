@@ -94,8 +94,15 @@ body {
 .tab-content {
   flex: 1; overflow-y: auto; overflow-x: hidden;
   min-height: 0;
+  /* нужно для дочерних элементов с height:100% */
+  position: relative;
 }
 .tab-content.hidden { display: none; }
+
+/* Reels — отключаем скролл, фиксируем высоту */
+#tab-reels {
+  overflow: hidden;
+}
 
 /* ── Models grid ── */
 #tab-models { padding: 16px; }
