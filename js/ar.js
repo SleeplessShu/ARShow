@@ -52,12 +52,11 @@ export async function startAR() {
   log('immersive-ar supported:', supported);
   if (!supported) { showNoXR(); return; }
 
-  const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: false, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); // не более 1.5 на мобильном
   renderer.setSize(innerWidth, innerHeight);
   renderer.xr.enabled = true;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = false; // тени отключены — дорого в AR
   State.setRenderer(renderer);
 
   const scene = new THREE.Scene();
@@ -71,20 +70,12 @@ export async function startAR() {
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.4);
-  dir.position.set(2, 4, 2); dir.castShadow = true;
-  dir.shadow.mapSize.set(1024, 1024); scene.add(dir);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.4);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(2, 4, 2);
+  scene.add(dir);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.3);
   fill.position.set(-2, 1, -2); scene.add(fill);
-
-  const shadowPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(5, 5),
-    new THREE.ShadowMaterial({ opacity: 0.3 })
-  );
-  shadowPlane.rotation.x = -Math.PI / 2;
-  shadowPlane.receiveShadow = true;
-  scene.add(shadowPlane);
 
   const reticle = makeReticle();
   reticle.visible = false;
@@ -135,6 +126,13 @@ export async function startAR() {
   renderer.setAnimationLoop(onFrame);
   log('animation loop started');
   setupARInteraction();
+
+  // Убрать дебаг-оверлей через 5 секунд
+  setTimeout(() => {
+    const dbg = document.getElementById('ar-debug');
+    if (dbg) dbg.remove();
+    _dbg = null;
+  }, 8000);
 }
 
 function makeReticle() {
@@ -154,43 +152,59 @@ function makeReticle() {
   return g;
 }
 
-let _frameCount = 0;
-let _hitCount = 0;
+// Переиспользуемые объекты — не создаём в каждом кадре
+const _pos  = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _scl  = new THREE.Vector3();
+
+// Кэш состояния чтобы не трогать DOM каждый кадр
+let _lastHadHit    = null;
+let _frameCount    = 0;
 
 function onFrame(time, frame) {
   if (!frame) { State.renderer.render(State.scene, State.camera); return; }
+
   _frameCount++;
 
+  // Логируем только первые несколько секунд потом выключаем
+  if (_frameCount === 60) log(`60 frames OK, hits working`);
+
   const refSpace = State.renderer.xr.getReferenceSpace();
-  const hits     = State.hitTestSource ? frame.getHitTestResults(State.hitTestSource) : [];
+  const hits     = State.hitTestSource
+    ? frame.getHitTestResults(State.hitTestSource)
+    : _emptyArr;
 
-  // Логируем каждые 60 кадров
-  if (_frameCount % 60 === 0) {
-    log(`frame=${_frameCount} hits=${hits.length} placed=${State.isPlaced} refspace=${refSpace ? 'OK' : 'NULL'} hitsrc=${State.hitTestSource ? 'OK' : 'NULL'}`);
-  }
+  const hasHit = hits.length > 0;
 
-  if (hits.length) {
-    _hitCount++;
+  if (hasHit) {
     const pose = hits[0].getPose(refSpace);
     State.reticle.visible = true;
     State.reticle.matrix.fromArray(pose.transform.matrix);
-    State.reticle.matrix.decompose(
-      State.reticle.position, State.reticle.quaternion, State.reticle.scale
-    );
-    if (!State.isPlaced) {
-      $('reticle-hint').style.display = 'none';
-      setStatus('Нажмите чтобы разместить модель');
-    }
+    // Переиспользуем объекты — нет аллокаций
+    State.reticle.matrix.decompose(_pos, _quat, _scl);
+    State.reticle.position.copy(_pos);
+    State.reticle.quaternion.copy(_quat);
   } else {
     State.reticle.visible = false;
-    if (!State.isPlaced) {
-      $('reticle-hint').style.display = 'flex';
+  }
+
+  // DOM трогаем только при смене состояния — не каждый кадр
+  if (!State.isPlaced && hasHit !== _lastHadHit) {
+    _lastHadHit = hasHit;
+    const hint = document.getElementById('reticle-hint');
+    if (hasHit) {
+      if (hint) hint.style.display = 'none';
+      setStatus('Нажмите чтобы разместить модель');
+    } else {
+      if (hint) hint.style.display = 'flex';
       setStatus('Наводите на пол или стол...');
     }
   }
 
   State.renderer.render(State.scene, State.camera);
 }
+
+const _emptyArr = [];
 
 function onAREnd() {
   $('canvas-wrap').classList.remove('active');
@@ -207,20 +221,17 @@ function onAREnd() {
 }
 
 export async function placeModel() {
-  log(`placeModel called. models=${State.modelList.length} reticle=${State.reticle?.visible} idx=${State.currentModelIdx}`);
   if (State.modelList.length === 0) { showError('Список моделей не загружен'); return; }
-  if (!State.reticle?.visible) { log('reticle not visible - skip'); return; }
+  if (!State.reticle?.visible) return;
 
   if (State.placedObject) {
     State.scene.remove(State.placedObject);
     State.setPlacedObject(null);
   }
 
-  log('loading model...');
   let obj;
   try { obj = await loadModel(State.currentModelIdx); } catch (e) { log('loadModel error:', e.message); return; }
   if (!obj) { log('obj is null'); return; }
-  log('model loaded OK');
 
   // Сбрасываем смещение которое добавил normalizeModel (bottom at Y=0)
   // В AR позиционируем относительно hit-test точки
@@ -242,7 +253,7 @@ export async function placeModel() {
   State.scene.add(obj);
   State.setPlacedObject(obj);
   State.setIsPlaced(true);
-  log(`placed at x=${obj.position.x.toFixed(3)} y=${obj.position.y.toFixed(3)} z=${obj.position.z.toFixed(3)} scale=${obj.scale.x.toFixed(4)}`);
+  _lastHadHit = null; // сбросить кэш статуса
 
   $('reticle-hint').style.display = 'none';
   setStatus('Модель размещена · свайп для вращения');
