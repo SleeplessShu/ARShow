@@ -32,9 +32,9 @@ export async function startFallback() {
   bgCanvas.width = 2; bgCanvas.height = 512;
   const bgCtx = bgCanvas.getContext('2d');
   const grad = bgCtx.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0,   '#e8e4f0'); // сверху — холодный светло-лавандовый
-  grad.addColorStop(0.5, '#f5f2ec'); // середина — тёплый нейтральный
-  grad.addColorStop(1,   '#ede8e0'); // снизу — тёплый бежевый
+  grad.addColorStop(0,   '#848383'); // сверху — холодный светло-лавандовый
+  grad.addColorStop(0.5, '#585858'); // середина — тёплый нейтральный
+  grad.addColorStop(1,   '#1a1b1b'); // снизу — тёплый бежевый
   bgCtx.fillStyle = grad;
   bgCtx.fillRect(0, 0, 2, 512);
   const bgTexture = new THREE.CanvasTexture(bgCanvas);
@@ -52,8 +52,8 @@ export async function startFallback() {
   pmrem.dispose();
 
   // Светлое студийное освещение
-  scene.add(new THREE.AmbientLight(0xffffff, 1.4));
-  const key = new THREE.DirectionalLight(0xfff5e0, 1.2);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+  const key = new THREE.DirectionalLight(0xfff5e0, 1.4);
   key.position.set(3, 5, 3);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -63,7 +63,7 @@ export async function startFallback() {
   key.shadow.camera.right = key.shadow.camera.top   =  1;
   key.shadow.bias = -0.001;
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0xe0eeff, 0.6);
+  const rim = new THREE.DirectionalLight(0xe0eeff, 0.8);
   rim.position.set(-2, 2, -3); scene.add(rim);
 
   // Плоскость для тени
