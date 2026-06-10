@@ -8,11 +8,48 @@ import { setupARInteraction } from './interaction.js';
 
 const $ = id => document.getElementById(id);
 
+// ── Отладочный лог на экране ─────────────────────────────
+function initDebugLog() {
+  let el = document.getElementById('ar-debug');
+  if (el) { el.innerHTML = ''; return el; }
+  el = document.createElement('div');
+  el.id = 'ar-debug';
+  el.style.cssText = `
+    position:fixed; top:60px; left:8px; right:8px; z-index:9999;
+    background:rgba(0,0,0,0.75); color:#0f0; font-size:11px;
+    font-family:monospace; padding:8px; border-radius:8px;
+    pointer-events:none; max-height:40vh; overflow-y:auto;
+    line-height:1.5;
+  `;
+  document.body.appendChild(el);
+  return el;
+}
+
+let _dbg = null;
+function log(...args) {
+  const msg = args.join(' ');
+  console.log('[AR]', msg);
+  if (!_dbg) return;
+  const line = document.createElement('div');
+  line.textContent = `${new Date().toISOString().slice(11,23)} ${msg}`;
+  _dbg.appendChild(line);
+  // Оставляем последние 20 строк
+  while (_dbg.children.length > 20) _dbg.removeChild(_dbg.firstChild);
+  _dbg.scrollTop = _dbg.scrollHeight;
+}
+
 export async function startAR() {
+  _dbg = initDebugLog();
+  log('startAR called');
   $('splash').style.display = 'none';
 
-  if (!navigator.xr) { showNoXR(); return; }
-  const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  if (!navigator.xr) { log('ERROR: navigator.xr undefined'); showNoXR(); return; }
+  log('navigator.xr OK');
+
+  const supported = await navigator.xr.isSessionSupported('immersive-ar').catch(e => {
+    log('isSessionSupported error:', e.message); return false;
+  });
+  log('immersive-ar supported:', supported);
   if (!supported) { showNoXR(); return; }
 
   const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, alpha: true });
@@ -69,18 +106,28 @@ export async function startAR() {
     requiredFeatures: ['hit-test'],
     optionalFeatures: ['dom-overlay'],
     domOverlay: { root: $('ui-overlay') },
-  });
+  }).catch(e => { log('requestSession error:', e.message); return null; });
+
+  if (!xrSession) { log('ERROR: no xrSession'); showNoXR(); return; }
+  log('XR session created');
   State.setXrSession(xrSession);
 
   renderer.xr.setReferenceSpaceType('local');
   await renderer.xr.setSession(xrSession);
+  log('renderer XR session set');
 
-  const viewerSpace = await xrSession.requestReferenceSpace('viewer');
-  const hitSource   = await xrSession.requestHitTestSource({ space: viewerSpace });
+  const viewerSpace = await xrSession.requestReferenceSpace('viewer')
+    .catch(e => { log('viewer refspace error:', e.message); return null; });
+  log('viewer refspace:', viewerSpace ? 'OK' : 'FAIL');
+
+  const hitSource = await xrSession.requestHitTestSource({ space: viewerSpace })
+    .catch(e => { log('hitTestSource error:', e.message); return null; });
+  log('hitTestSource:', hitSource ? 'OK' : 'FAIL');
   State.setHitTestSource(hitSource);
 
   xrSession.addEventListener('end', onAREnd);
   renderer.setAnimationLoop(onFrame);
+  log('animation loop started');
   setupARInteraction();
 }
 
@@ -101,13 +148,23 @@ function makeReticle() {
   return g;
 }
 
+let _frameCount = 0;
+let _hitCount = 0;
+
 function onFrame(time, frame) {
   if (!frame) { State.renderer.render(State.scene, State.camera); return; }
+  _frameCount++;
 
   const refSpace = State.renderer.xr.getReferenceSpace();
   const hits     = State.hitTestSource ? frame.getHitTestResults(State.hitTestSource) : [];
 
+  // Логируем каждые 60 кадров
+  if (_frameCount % 60 === 0) {
+    log(`frame=${_frameCount} hits=${hits.length} placed=${State.isPlaced} refspace=${refSpace ? 'OK' : 'NULL'} hitsrc=${State.hitTestSource ? 'OK' : 'NULL'}`);
+  }
+
   if (hits.length) {
+    _hitCount++;
     const pose = hits[0].getPose(refSpace);
     State.reticle.visible = true;
     State.reticle.matrix.fromArray(pose.transform.matrix);
@@ -115,7 +172,6 @@ function onFrame(time, frame) {
       State.reticle.position, State.reticle.quaternion, State.reticle.scale
     );
     if (!State.isPlaced) {
-      // Поверхность найдена — скрываем индикатор сканирования
       $('reticle-hint').style.display = 'none';
       setStatus('Нажмите чтобы разместить модель');
     }
@@ -145,17 +201,20 @@ function onAREnd() {
 }
 
 export async function placeModel() {
+  log(`placeModel called. models=${State.modelList.length} reticle=${State.reticle?.visible} idx=${State.currentModelIdx}`);
   if (State.modelList.length === 0) { showError('Список моделей не загружен'); return; }
-  if (!State.reticle?.visible) return;
+  if (!State.reticle?.visible) { log('reticle not visible - skip'); return; }
 
   if (State.placedObject) {
     State.scene.remove(State.placedObject);
     State.setPlacedObject(null);
   }
 
+  log('loading model...');
   let obj;
-  try { obj = await loadModel(State.currentModelIdx); } catch (e) { return; }
-  if (!obj) return;
+  try { obj = await loadModel(State.currentModelIdx); } catch (e) { log('loadModel error:', e.message); return; }
+  if (!obj) { log('obj is null'); return; }
+  log('model loaded OK');
 
   // Сбрасываем смещение которое добавил normalizeModel (bottom at Y=0)
   // В AR позиционируем относительно hit-test точки
@@ -177,6 +236,7 @@ export async function placeModel() {
   State.scene.add(obj);
   State.setPlacedObject(obj);
   State.setIsPlaced(true);
+  log(`placed at x=${obj.position.x.toFixed(3)} y=${obj.position.y.toFixed(3)} z=${obj.position.z.toFixed(3)} scale=${obj.scale.x.toFixed(4)}`);
 
   $('reticle-hint').style.display = 'none';
   setStatus('Модель размещена · свайп для вращения');
