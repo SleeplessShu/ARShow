@@ -42,7 +42,7 @@ export async function startFallback() {
   State.setScene(scene);
 
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
-  camera.position.set(0, 0.25, 1.0);
+  camera.position.set(0, 1.0, 1.0);
   camera.lookAt(0, 0, 0);
   State.setCamera(camera);
 
