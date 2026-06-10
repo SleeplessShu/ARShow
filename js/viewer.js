@@ -22,12 +22,12 @@ export async function startFallback() {
   const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setClearColor(0x171717);
-  renderer.shadowMap.enabled = true;
+  renderer.setClearColor(0xf0ede8);
+  renderer.shadowMap.enabled = false;
   State.setRenderer(renderer);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x171717);
+  scene.background = new THREE.Color(0xf0ede8);
   State.setScene(scene);
 
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
@@ -37,12 +37,15 @@ export async function startFallback() {
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.1).texture;
   pmrem.dispose();
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.5);
-  dir.position.set(2, 4, 2); scene.add(dir);
+  // Светлое студийное освещение
+  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+  const key = new THREE.DirectionalLight(0xfff5e0, 1.0);
+  key.position.set(3, 5, 3); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xe0eeff, 0.4);
+  rim.position.set(-2, 2, -3); scene.add(rim);
 
   $('canvas-wrap').classList.add('active');
   $('ui-overlay').classList.add('active');
