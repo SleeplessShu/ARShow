@@ -39,47 +39,48 @@ export async function init(container) {
         padding: 0 !important;
         overflow: hidden !important;
         background: #0e0e0e;
-        display: flex;
-        flex-direction: column;
+        position: relative !important;
+        /* Абсолютный дочерний #reels-wrap позиционируется относительно этого элемента */
+        isolation: isolate;
       }
 
       #reels-wrap {
-        flex: 1;
-        width: 100%;
-        position: relative;
+        /* Абсолютно заполняем всю вкладку */
+        position: absolute;
+        inset: 0;
         overflow: hidden;
         display: flex;
-        align-items: stretch;
+        align-items: center;
+        justify-content: center;
+        background: #0e0e0e;
       }
 
       #reels-track {
         display: flex;
-        flex: 1;
         align-items: stretch;
+        height: 100%;
         transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
         will-change: transform;
       }
 
       .reel-slide {
         flex-shrink: 0;
+        height: 100%;
         position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
         background: #000;
-        /* высота берётся от flex-родителя через align-items:stretch */
       }
 
       .reel-slide video {
-        /* Вписываем по высоте — весь ролик виден */
+        /* object-fit:contain — видео целиком, без обрезки */
         width: auto;
         height: 100%;
-        max-height: 100%;
         max-width: 100%;
         object-fit: contain;
         display: block;
         background: #000;
-        flex-shrink: 0;
       }
 
       /* Буферизация */
