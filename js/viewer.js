@@ -38,7 +38,11 @@ export async function startFallback() {
   const bgTexture = new THREE.CanvasTexture(bgCanvas);
   scene.background = bgTexture;
   State.setScene(scene);
-
+  
+const front = new THREE.DirectionalLight(0xffffff, 0.6);
+front.position.set(1.5, 0.5, 1.2);
+scene.add(front);
+  
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
   camera.position.set(0, 0.5, 0.8);
   camera.lookAt(0, 0.25, 0);
